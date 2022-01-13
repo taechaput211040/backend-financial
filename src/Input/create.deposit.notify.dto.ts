@@ -1,0 +1,46 @@
+import { IsBoolean, IsNumber, IsOptional, IsString, Length } from "class-validator";
+
+export class DepositNotifyDto {
+
+
+
+    // npm i --save class-validator class-transformer
+    @IsString()
+    website: string;
+
+    @IsString()
+    agent: string;
+
+    @IsString()
+    hash: string;
+
+    @IsString()
+    create_by: string;
+
+
+
+    
+    
+    @IsNumber()
+    amount: number;
+
+    
+    @IsNumber()
+    bonus: number;
+
+   
+    
+    @IsOptional()
+    bf_credit: number;
+
+  
+    @IsOptional()
+    af_credit: number;
+
+    @IsString()
+    username: string;
+    
+    @IsOptional()
+    @IsString()
+    remark: string;
+} 

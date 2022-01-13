@@ -1,0 +1,8 @@
+.dockerignore
+node_modules
+.vscode
+.idea
+.readmes
+dist
+.env
+# .certs
