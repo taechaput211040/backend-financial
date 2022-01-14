@@ -2,6 +2,7 @@ import { BadRequestException, HttpService, Injectable, UnauthorizedException } f
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "src/Entity/User.entity";
+import { GatewayService } from "src/Gateway/gateway.service";
 import { UserDto } from "src/User/create.user.dto";
 import { Repository } from "typeorm";
 import { LoginDto } from "./login.dto";
@@ -14,6 +15,7 @@ export class AuthService {
     private readonly userRepository: Repository<User>,
     private readonly jwtservice: JwtService,
     private httpService: HttpService,
+    private readonly gatewayService: GatewayService,
   ) { }
 
   public async superAdminKey(): Promise<string> {
@@ -91,9 +93,13 @@ export class AuthService {
 
 
   }
-  public async loginRico(body: LoginDto): Promise<any> {
+  public async loginRico(body: LoginDto,hash:string): Promise<any> {
+// const hash = "4fe56b880271a98c20495111f7b70e9b"
+const web = await this.gatewayService.getWebInfoByHash(hash)
 
-    const url = process.env.RICO_URL + '/api/Login/Auth';
+const url = 'https://rico.'+web.website+'/api/Login/Auth';
+       
+    // const url = process.env.RICO_URL + '/api/Login/Auth';
     console.log(url)
     try {
       const result = await this.httpService.post(url,body).toPromise();

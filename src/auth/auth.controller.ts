@@ -46,18 +46,19 @@ export class AuthController {
         }
 
     }
-    @Post()
+    @Post("/:hash")
     // @UseGuards(AuthGuard('jwt'))
     @HttpCode(200)
     async login(
         @Req() request,
-        @Body() body: LoginDto
+        @Body() body: LoginDto,
+        @Param("hash") hash:string
     ) {
         // this.logger.log(request.headers)
         this.logger.log("teasdasdst")
 
         //check in rico
-        let login_rico = await this.authService.loginRico(body)
+        let login_rico = await this.authService.loginRico(body,hash)
         const ssid = Math.floor(Math.random() * 100000) + 100001
         await this.cacheManager.set('_SSID_' + login_rico.username, ssid, { ttl: 3600 });
         login_rico.randomkey = ssid
