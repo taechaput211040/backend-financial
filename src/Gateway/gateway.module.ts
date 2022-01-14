@@ -24,8 +24,10 @@ import { Members } from "src/Entity/member.entiry";
 
   }),
     HttpModule,
-    SwaggerModule],
+    SwaggerModule
+    
+  ],
   controllers: [GatewayController],
   providers: [GatewayService]
 })
-export class GatewayModule { }
+export class GatewayModule { } 

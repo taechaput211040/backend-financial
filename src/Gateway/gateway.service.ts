@@ -1,4 +1,4 @@
-import { BadRequestException, HttpService, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, CACHE_MANAGER, HttpService, Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, SelectQueryBuilder } from "typeorm";
 import { AxiosResponse } from 'axios'; import { ConfigService } from '@nestjs/config';
@@ -7,7 +7,7 @@ import { Website } from 'src/Entity/website.entity';
 import { WebsiteDto } from 'src/Input/website.dto';
 import { SetTurnDto } from 'src/Input/setturn.dto';
 import { isRFC3339 } from 'class-validator';
-
+import { Cache } from "cache-manager";
 @Injectable()
 export class GatewayService {
     private readonly logger = new Logger(GatewayService.name)
@@ -16,6 +16,7 @@ export class GatewayService {
         @InjectRepository(Website)
         private readonly WebsiteRepository: Repository<Website>,
         private readonly configService: ConfigService,
+        @Inject(CACHE_MANAGER) private cacheManager: Cache,
 
     ) {
 
@@ -517,10 +518,10 @@ export class GatewayService {
         const web = await this.getWebInfoByHash(hash)
         // const url = process.env.RICO +`/api/Static/Member/${hash}`;
         // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
-        const url = 'http://localhost:8005/api/Support/Promotion/'+username.toLowerCase().trim()
-      console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Promotion/'+username.toLowerCase().trim()
-      
+        // const url = 'http://localhost:8005/api/Support/Promotion/'+username.toLowerCase().trim()
+     
+        const url = 'https://rico.'+web.website+'/api/Support/Promotion/'+username.toLowerCase().trim()
+        console.log(url)
       
 
         try {
@@ -542,16 +543,46 @@ export class GatewayService {
         
         }
     }
+    
+    public async getPromotionRegister(hash :string): Promise<AxiosResponse | object> {
+        
+        const web = await this.getWebInfoByHash(hash)
+        // const url = process.env.RICO +`/api/Static/Member/${hash}`;
+        // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
+        // const url = 'http://localhost:8005/api/Support/PromotionRegister'
+    
+        const url = 'https://rico.'+web.website+'/api/Support/PromotionRegister'
+        console.log(url)
+
+        try {
+            this.logger.log('getPromotionRegister  fired');
+            this.logger.log('getPromotionRegister  fired');
+            const result = await this.httpService.get(url).toPromise();
+            this.logger.log('getPromotionRegister  returned success');
+            return result.data
+        } catch (error) {
+
+            this.logger.log('getPromotionRegister  error');
+            console.log(error.response.status);
+          
+                return {
+                    code:200,
+                    name:"ไม่ได้รับโปรโมชั่น",
+                    detail:"ไม่มีโบนัส"
+                }
+        
+        }
+    }
+    
     public async getPromotionAuth(hash :string,username:string): Promise<AxiosResponse | object> {
         
         const web = await this.getWebInfoByHash(hash)
         // const url = process.env.RICO +`/api/Static/Member/${hash}`;
         // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
-        const url = 'http://localhost:8005/api/Support/PromotionAutorize/'+username.toLowerCase().trim()
-      console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Promotion/'+username.toLowerCase().trim()
-      
-      
+        // const url = 'http://localhost:8005/api/Support/PromotionAutorize/'+username.toLowerCase().trim()
+    
+        const url = 'https://rico.'+web.website+'/api/Support/PromotionAutorize/'+username.toLowerCase().trim()
+        console.log(url)
 
         try {
             this.logger.log('getPromotionAuth  fired');
@@ -577,11 +608,11 @@ export class GatewayService {
         const web = await this.getWebInfoByHash(hash)
         // const url = process.env.RICO +`/api/Static/Member/${hash}`;
         // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
-        const url = 'http://localhost:8005/api/Support/Promotion/'+username.toLowerCase().trim()
-      console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Promotion/'+username.toLowerCase().trim()
+        // const url = 'http://localhost:8005/api/Support/Promotion/'+username.toLowerCase().trim()
+     
+        const url = 'https://rico.'+web.website+'/api/Support/Promotion/'+username.toLowerCase().trim()
       
-      
+        console.log(url)
 
         try {
             this.logger.log('changePromotionMember  fired');
@@ -644,8 +675,8 @@ export class GatewayService {
     //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
     //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
     //   console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
-        const url = 'http://localhost:8005/api/Support/Cashback/'+username.toLowerCase().trim()
+        const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
+        // const url = 'http://localhost:8005/api/Support/Cashback/'+username.toLowerCase().trim()
       
     //   return
 
@@ -681,8 +712,8 @@ export class GatewayService {
     //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
     //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
     //   console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
-        const url = 'http://localhost:8005/api/Support/Cashback/'
+        const url = 'https://rico.'+web.website+'/api/Support/Cashback/'
+        // const url = 'http://localhost:8005/api/Support/Cashback/'
       
     //   return
 
@@ -713,8 +744,8 @@ export class GatewayService {
     //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
     //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
     //   console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
-        const url = 'http://localhost:8005/api/Support/Cashback/Collect'
+        const url = 'https://rico.'+web.website+'/api/Support/Cashback/Collect'
+        // const url = 'http://localhost:8005/api/Support/Cashback/Collect'
       
     //   return
 
@@ -745,8 +776,8 @@ export class GatewayService {
     //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
     //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
     //   console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
-        const url = 'http://localhost:8005/api/Support/ChangePassword'
+        const url = 'https://rico.'+web.website+'/api/Support/ChangePassword'
+        // const url = 'http://localhost:8005/api/Support/ChangePassword'
       
     //   return
 
@@ -767,6 +798,43 @@ export class GatewayService {
         
         }
     }
+    public async postRegister(hash:string,input :any): Promise<AxiosResponse | object> {
+        
+        // const headersRequest = {
+        //     'Content-Type': 'application/json', // afaik this one is not needed
+        //     'Authorization': `${token}`,
+        // };
+        const web = await this.getWebInfoByHash(hash)
+    //     const url = process.env.RICO +`/api/Static/Member/${hash}`;
+    //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
+    //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
+    //   console.log(url)
+        const url = 'https://rico.'+web.website+'/api/Support/Register'
+        // const url = 'http://localhost:8005/api/Support/Register'
+      
+    //   return
+
+        try {
+            this.logger.log('postRegister  fired');
+            this.logger.log(input);
+           
+            const result = await this.httpService.post(url,input).toPromise();
+            this.logger.log('postRegister  returned success');
+            this.logger.log(result.data);
+            const ssid = Math.floor(Math.random() * 100000) + 100001
+            await this.cacheManager.set('_SSID_' + result.data.username, ssid, { ttl: 3600 });
+            result.data.randomkey = ssid
+            return result.data
+        } catch (error) {
+
+            this.logger.log('postRegister  error');
+            console.log(error.response.data);
+          throw new BadRequestException(error.response.data)
+                // return error.response.data
+        
+        }
+    }
+    
     public async getDepositBank(hash:string,username :string): Promise<AxiosResponse | object> {
         
         // const headersRequest = {
@@ -778,8 +846,8 @@ export class GatewayService {
     //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
     //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
     //   console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
-        const url = `http://localhost:8005/api/Support/Bank/${username}`
+        const url = 'https://rico.'+web.website+`/api/Support/Bank/${username}`
+        // const url = `http://localhost:8005/api/Support/Bank/${username}`
       
     //   return
 
@@ -811,8 +879,8 @@ export class GatewayService {
     //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
     //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
     //   console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
-        const url = `http://localhost:8005/api/WDcheck`
+        const url = 'https://rico.'+web.website+'/api/WDcheck'
+        // const url = `http://localhost:8005/api/WDcheck`
       
     //   return
 
@@ -844,8 +912,8 @@ export class GatewayService {
     //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
     //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
     //   console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
-        const url = `http://localhost:8005/api/WDwithAmountCheck`
+        const url = 'https://rico.'+web.website+'/api/WDwithAmountCheck'
+        // const url = `http://localhost:8005/api/WDwithAmountCheck`
       
     //   return
 
@@ -877,8 +945,8 @@ export class GatewayService {
     //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
     //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
     //   console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
-        const url = `http://localhost:8005/api/Support/History/${username}`
+        const url = 'https://rico.'+web.website+`/api/Support/History/${username}`
+        // const url = `http://localhost:8005/api/Support/History/${username}`
       
     //   return
 
@@ -910,8 +978,8 @@ export class GatewayService {
     //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
     //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
     //   console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
-        const url = `http://localhost:8005/api/Support/Contact`
+        const url = 'https://rico.'+web.website+'/api/Support/Contact'
+        // const url = `http://localhost:8005/api/Support/Contact`
       
     //   return
 
@@ -944,8 +1012,8 @@ export class GatewayService {
     //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
     //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
     //   console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
-        const url = `http://localhost:8005/api/Support/Wheel/`
+        const url = 'https://rico.'+web.website+'/api/Support/Wheel/'
+        // const url = `http://localhost:8005/api/Support/Wheel/`
       
     //   return
 
@@ -978,8 +1046,8 @@ export class GatewayService {
     //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
     //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
     //   console.log(url)
-        // const url = 'https://rico.'+web.website+'/api/Support/Cashback/'+username.toLowerCase().trim()
-        const url = `http://localhost:8005/api/Support/WheelCheck/${username}`
+        const url = 'https://rico.'+web.website+`/api/Support/WheelCheck/${username}`
+        // const url = `http://localhost:8005/api/Support/WheelCheck/${username}`
       
     //   return
 
@@ -997,6 +1065,172 @@ export class GatewayService {
             console.log(error.response.data);
           throw new BadRequestException(error.response.data)
                 return error.response.data
+        
+        }
+    }
+    public async getCheckinData(hash :string,username:string): Promise<AxiosResponse | object> {
+        
+        
+        // const headersRequest = {
+        //     'Content-Type': 'application/json', // afaik this one is not needed
+        //     'Authorization': `${token}`,
+        // };
+        const web = await this.getWebInfoByHash(hash)
+    //     const url = process.env.RICO +`/api/Static/Member/${hash}`;
+    //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
+    //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
+    //   console.log(url)
+        const url = 'https://rico.'+web.website+`/api/Support/Checkin/${username}`
+        // const url = `http://localhost:8005/api/Support/Checkin/${username}`
+      
+    //   return
+
+        try {
+            this.logger.log('getCheckinData  fired');
+ 
+           
+            const result = await this.httpService.get(url).toPromise();
+            this.logger.log('getCheckinData  returned success');
+            this.logger.log(result.data);
+            return result.data
+        } catch (error) {
+
+            this.logger.log('getCheckinData  error');
+            console.log(error.response.data);
+          throw new BadRequestException(error.response.data)
+                return error.response.data
+        
+        }
+    }
+    public async postCheckinDay(hash :string,username:string,day:string,input:any): Promise<AxiosResponse | object> {
+        
+        // const date = parseInt(day);
+        // const headersRequest = {
+        //     'Content-Type': 'application/json', // afaik this one is not needed
+        //     'Authorization': `${token}`,
+        // };
+        const web = await this.getWebInfoByHash(hash)
+    //     const url = process.env.RICO +`/api/Static/Member/${hash}`;
+    //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
+    //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
+    //   console.log(url)
+        const url = 'https://rico.'+web.website+`/api/Support/Checkin/${username}/${day}`
+        // const url = `http://localhost:8005/api/Support/Checkin/${username}/${day}`
+      
+    //   return
+
+        try {
+            this.logger.log('postCheckinDay  fired');
+ 
+           
+            const result = await this.httpService.post(url,input).toPromise();
+            this.logger.log('postCheckinDay  returned success');
+            this.logger.log(result.data);
+            return result.data
+        } catch (error) {
+
+            this.logger.log('postCheckinDay  error');
+            console.log(error.response.data);
+          throw new BadRequestException(error.response.data)
+                return error.response.data
+        
+        }
+    }
+    
+    public async postCheckinBonus(hash :string,username:string,day:string,input:any): Promise<AxiosResponse | object> {
+        
+        // const date = parseInt(day);
+        // const headersRequest = {
+        //     'Content-Type': 'application/json', // afaik this one is not needed
+        //     'Authorization': `${token}`,
+        // };
+        const web = await this.getWebInfoByHash(hash)
+    //     const url = process.env.RICO +`/api/Static/Member/${hash}`;
+    //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
+    //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
+    //   console.log(url)
+        const url = 'https://rico.'+web.website+`/api/Support/CheckinBonus/${username}/${day}`
+        // const url = `http://localhost:8005/api/Support/CheckinBonus/${username}/${day}`
+      
+    //   return
+
+        try {
+            this.logger.log('postCheckinBonus  fired');
+ 
+           
+            const result = await this.httpService.post(url,input).toPromise();
+            this.logger.log('postCheckinBonus  returned success');
+            this.logger.log(result.data);
+            return result.data
+        } catch (error) {
+
+            this.logger.log('postCheckinBonus  error');
+            console.log(error.response.data);
+          throw new BadRequestException(error.response.data)
+                return error.response.data
+        
+        }
+    }
+    public async checkMaintenance(headers:any,jwt:any,provider_code:string,game_id:string,is_mobile:string): Promise<AxiosResponse | object> {
+       
+        const headersRequest = {
+            'x-real-ip': `${headers['cf-connecting-ip']}`, // afaik this one is not needed
+            // 'x-real-ip': `112.333.333.2`, // afaik this one is not needed
+            'user-agent': `${headers['user-agent']}`,
+        };
+        const url = process.env.CHECK_MAINTAINANCE +`/api/Provider/${provider_code}?username=${jwt.username}&game_id=${game_id}`
+      
+        try {
+            this.logger.log('checkMaintenance  fired');
+            this.logger.log(url);
+           
+            const result = await this.httpService.get(url, { headers: headersRequest }).toPromise();
+            this.logger.log('checkMaintenance  returned success');
+            this.logger.log(result.data);
+            return {status:true}
+        } catch (error) {
+
+            this.logger.log('checkMaintenance  error');
+            console.log(error.response.data);
+         return {
+            status:false, 
+            url:'/error?mobile='+is_mobile+'&message='+error.response.data.message}
+                // return error.response.data
+        
+        }
+        return headersRequest
+    }
+    public async lunchGame(authorization:any,type_id:string,provider_id:string,provider_code:string,is_mobile:string,game_id:string): Promise<AxiosResponse | object> {
+        
+        const headersRequest = {
+            'Authorization': `${authorization}` // afaik this one is not needed
+          
+        };
+        // const web = await this.getWebInfoByHash(hash)
+    //     const url = process.env.RICO +`/api/Static/Member/${hash}`;
+    //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
+    //     const url = `${process.env.LUNCH_GAME}/api/v1/member/`+id
+    //   console.log(url)
+        const url = process.env.LUNCH_GAME+type_id + '/launch?provider_id=' + provider_id + '&game_id=' + game_id + '&is_mobile='+ is_mobile ;
+        // const url = `http://localhost:8005/api/Support/CheckinBonus/${username}/${day}`
+      
+    //   return
+
+        try {
+            this.logger.log('lunchGame  fired');
+ 
+           
+            const result = await this.httpService.get(url, { headers: headersRequest }).toPromise();
+            this.logger.log('lunchGame  returned success');
+            this.logger.log(result.data);
+            return {status:200,
+            url:result.data.gameUrl}
+        } catch (error) {
+
+            this.logger.log('lunchGame  error');
+            console.log(error.response.data);
+            return {status:404,
+                url:'/error?mobile='+is_mobile+'&message=พบข้อผิดพลาด กรุณาลองใหม่อีกครั้ง :Error CODE: '+error.response.status}
         
         }
     }

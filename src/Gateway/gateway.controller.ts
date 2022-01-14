@@ -1,4 +1,5 @@
-import { BadRequestException, Body, CACHE_MANAGER, ClassSerializerInterceptor, Controller, Delete, Get, HttpCode, HttpException, HttpStatus, Inject, Logger, NotFoundException, Param, Patch, Post, Put, Query, Req, SerializeOptions, UnauthorizedException, UploadedFile, UseGuards, UseInterceptors, UsePipes, ValidationPipe } from "@nestjs/common";
+import { BadRequestException, Body, CACHE_MANAGER, ClassSerializerInterceptor, Controller, Delete, Get, HttpCode, HttpException, HttpStatus, Inject, Logger, NotFoundException, Param, Patch, Post, Put, Query, Redirect, Req, SerializeOptions, UnauthorizedException, UploadedFile, UseGuards, UseInterceptors, UsePipes, ValidationPipe } from "@nestjs/common";
+
 import { Cache } from "cache-manager";
 import { plainToClass } from "class-transformer";
 import { Request } from "express";
@@ -16,7 +17,7 @@ export class GatewayController {
     constructor(
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
 
-        private readonly gatewayService: GatewayService,
+        private readonly gatewayService: GatewayService
         // private readonly transectionService: TransectionService,
     ) { }
 
@@ -148,17 +149,78 @@ export class GatewayController {
         this.logger.log('getWheelCheck  hit');
         return await this.gatewayService.getWheelCheck(hash,username)
     }
-
-    
+    @Get('/Checkin/:hash/:username')
+    @UseInterceptors(ClassSerializerInterceptor)
+    async getCheckin(
+        @Req() request: Request,
+        @Param("hash") hash:string,
+        @Param("username") username:string
+    ) {
+        this.logger.log('getWheelCheck  hit');
+        return await this.gatewayService.getCheckinData(hash,username)
+    }
+    @Post('/Checkin/:hash/:username/:day')
+    @UseInterceptors(ClassSerializerInterceptor)
+    async postCheckinDay(
+        @Req() request: Request,
+        @Param("hash") hash:string,
+        @Param("username") username:string,
+        @Param("day") day:string,
+        @Body() input:any
+    ) {
+        this.logger.log('postCheckinDay  hit');
+        return await this.gatewayService.postCheckinDay(hash,username,day,input)
+    }
+    @Post('/CheckinBonus/:hash/:username/:day')
+    @UseInterceptors(ClassSerializerInterceptor)
+    async postCheckinBonus(
+        @Req() request: Request,
+        @Param("hash") hash:string,
+        @Param("username") username:string,
+        @Param("day") day:string,
+        @Body() input:any
+    ) {
+        this.logger.log('postCheckinBonus  hit');
+        return await this.gatewayService.postCheckinBonus(hash,username,day,input)
+    }
     @Get('/GameRedirect')
+    @Redirect('', 302)
     @UseInterceptors(ClassSerializerInterceptor)
     async getGameRedirect(
-        @Req() request: Request
+        @Req() request: Request,
+        @Query("type_id") type_id,
+        @Query("provider_id") provider_id,
+        @Query("game_id") game_id,
+        @Query("provider_code") provider_code,
+        @Query("is_mobile") is_mobile,
+        @Query("authorization") authorization
     ) {
         this.logger.log('getGameRedirect  hit');
-      
+        var base64Url = authorization.split('.')[1];
+        let jwt_string = Buffer.from(base64Url, 'base64').toString()
+        const jwt = JSON.parse(jwt_string)
+        this.logger.log(jwt);
+        console.log(request.headers)
+        console.log(request.headers.cookie)
+        console.log(request.headers['cf-connecting-ip'])
+        console.log(request.headers['user-agent'])
+   
+        
+        let check:any = await this.gatewayService.checkMaintenance(request.headers,jwt,provider_code,game_id,is_mobile)
+        console.log(check)
+        if(!check.status){
+            return check
+        }
+        
+        let res:any = await this.gatewayService.lunchGame(authorization,type_id,provider_id,provider_code,is_mobile,game_id)
+        
+        if(res.status == 404){
+            return res
+        }
+        console.log(res)
+        return res
+    //   return   { url: 'https://google.com/' };
     }
-
     @Get('/Promotion/:hash/:username')
     @UseInterceptors(ClassSerializerInterceptor)
     async getPromotion(
@@ -168,6 +230,17 @@ export class GatewayController {
     ) {
         this.logger.log('getPromotion  hit');
         const a =  await this.gatewayService.getPromotion(hash,username)
+        this.logger.log(a);
+        return a
+    }
+    @Get('/PromotionRegister/:hash')
+    @UseInterceptors(ClassSerializerInterceptor)
+    async getPromotionRegister(
+        @Req() request: Request,
+        @Param("hash") hash:string
+    ) {
+        this.logger.log('getPromotionRegister  hit');
+        const a =  await this.gatewayService.getPromotionRegister(hash)
         this.logger.log(a);
         return a
     }
@@ -269,15 +342,16 @@ export class GatewayController {
 
     }
 
-    @Post('/Register')
+    @Post('/Register/:hash')
     @UseInterceptors(ClassSerializerInterceptor)
     async postRegister(
-        @Query('username') username,
-        @Query('password') password
+        @Param("hash") hash:string,
+        @Body() input:any
     ) {
         this.logger.log('postRegister  hit');
-  
-
+        this.logger.log(input);
+        let res = await this.gatewayService.postRegister(hash,input)
+        return res;
     }
 
     
@@ -362,6 +436,15 @@ export class GatewayController {
     }
     
 
-
+  
 
 }
+function parseJwt (token) {
+    var base64Url = token.split('.')[1];
+    var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+
+    return JSON.parse(jsonPayload);
+};
