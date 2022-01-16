@@ -863,7 +863,7 @@ export class GatewayService {
 
             this.logger.log('getDepositBank  error');
             console.log(error.response.data);
-          
+          throw new NotFoundException()
                 return error.response.data
         
         }
@@ -1174,7 +1174,7 @@ export class GatewayService {
     public async checkMaintenance(headers:any,jwt:any,provider_code:string,game_id:string,is_mobile:string): Promise<AxiosResponse | object> {
        
         const headersRequest = {
-            'x-real-ip': `${headers['cf-connecting-ip']}`, // afaik this one is not needed
+            'x-real-ip': `${headers['x-forwarded-for']}`, // afaik this one is not needed
             // 'x-real-ip': `112.333.333.2`, // afaik this one is not needed
             'user-agent': `${headers['user-agent']}`,
         };
