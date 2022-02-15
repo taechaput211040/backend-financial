@@ -435,7 +435,16 @@ export class GatewayController {
 
     }
     
-
+    @Get('/Member/:hash/:username')
+    @UseInterceptors(ClassSerializerInterceptor)
+    async getMemberInfo(
+       @Param("hash") hash:string,
+       @Param("username") username:string,
+    ) {
+        this.logger.log('getMemberInfo  hit');
+  
+        return await this.gatewayService.getMemerInfo(hash,username)
+    }
   
 
 }

@@ -1234,4 +1234,38 @@ export class GatewayService {
         
         }
     }
+    public async getMemerInfo(hash:string,username:string): Promise<AxiosResponse | object> {
+        
+        // const headersRequest = {
+        //     'Content-Type': 'application/json', // afaik this one is not needed
+        //     'Authorization': `${token}`,
+        // };
+        const web = await this.getWebInfoByHash(hash)
+    //     const url = process.env.RICO +`/api/Static/Member/${hash}`;
+    //     // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
+    //     const url = `${process.env.SMART_BACKEND}/api/v1/member/`+id
+    //   console.log(url)
+        const url = 'https://rico.'+web.website+'/api/Support/Member/'+username.toLocaleLowerCase()
+        // const url = `http://localhost:8005/api/Support/Contact`
+      
+    //   return
+
+        try {
+            this.logger.log('getMemerInfo  fired');
+ 
+           
+            const result = await this.httpService.get(url).toPromise();
+            this.logger.log('getMemerInfo  returned success');
+            // this.logger.log(result.data);
+            return result.data
+        } catch (error) {
+
+            this.logger.log('getMemerInfo  error');
+            console.log(error.response.data);
+          
+                return error.response.data
+        
+        }
+    }
+    
 }
