@@ -22,11 +22,17 @@ export class MemberController {
 
     ) { }
 
-    
+    @Get('/Reset')
+    async resetCache(
+    ) {
+    await this.cacheManager.reset()
+    return 'ok'
+    }
     @Get('/ByUsername/:username')
     async getMemberByUsername(
         @Param('username') username: string
     ) {
+      
         this.logger.log('getMemberByUsername  hit');
         const value = await this.cacheManager.get('_member_' + username.toLocaleLowerCase());
 
@@ -34,12 +40,15 @@ export class MemberController {
 
         const member = await this.memberService.getMember(this.decodeSeamlessUsername(username.toLocaleLowerCase()))
         if (!member) throw new NotFoundException()
-
+       
         const cache_data = {
             companyKey: member.company,
             agentKey: member.agent,
             username: this.generateSeamlessUsername(member),
-            displayUsername: member.username
+            displayUsername: member.username,
+            depositUrl:await this.getMemberUrl(member),
+            currency:'THB'
+
         }
         await this.cacheManager.set('_member_' + username.toLocaleLowerCase(), cache_data, { ttl: null });
 
@@ -62,7 +71,9 @@ export class MemberController {
             companyKey: member.company,
             agentKey: member.agent,
             username: this.generateSeamlessUsername(member),
-            displayUsername: member.username
+            displayUsername: member.username,
+            depositUrl:await this.getMemberUrl(member),
+            currency:'THB'
         }
         await this.cacheManager.set('_member_' + displayname.toLocaleLowerCase(), cache_data, { ttl: null });
 
@@ -160,5 +171,10 @@ export class MemberController {
     }
     private decodeSeamlessUsername(username: string) {
         return username.slice(4)
+    }
+   async getMemberUrl(member: Members) {
+        const web = await this.websiteService.getWebInfoByHash(member.hash)
+      
+        return 'https://member.'+web.website
     }
 }
