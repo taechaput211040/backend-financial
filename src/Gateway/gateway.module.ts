@@ -6,8 +6,6 @@ import { GatewayController } from "./gateway.controller";
 import { GatewayService } from "./gateway.service";
 import { Website } from "src/Entity/website.entity";
 
-import { ProviderBO } from "src/Entity/provider.bo.entity";
-import { Members } from "src/Entity/member.entiry";
 
 @Module({
   // imports:[],

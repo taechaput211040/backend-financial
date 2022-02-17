@@ -22,13 +22,13 @@ export class Members {
     @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
     public updated_at: Date;
 
-    @Column({nullable:true,default:false})
+    @Column({nullable:true})
     @Expose()
-    name:boolean;
+    name:string;
 
-    @Column({nullable:true,default:false})
+    @Column({nullable:true})
     @Expose()
-    lastname:boolean;
+    lastname:string;
 
 
     @Column({nullable:true,length:255})
@@ -92,11 +92,13 @@ export class Members {
 
     @Column({nullable:true})
     @Expose()
+    @Index()
     username:string;
 
     @Column({nullable:true})
     @Expose()
     password:string;
+
 
     @Column({nullable:true})
     @Expose()
@@ -132,11 +134,17 @@ export class Members {
 
     @Column({nullable:true})
     @Expose()
+    @Index()
+    aff_id:string;
+
+    @Column({nullable:true})
+    @Expose()
+    @Index()
     parent_id:string;
 
     @Column({nullable:true})
     @Expose()
-    level:number;
+    parent_username:string;
 
     @Column({nullable:true})
     @Expose()
@@ -154,6 +162,11 @@ export class Members {
     @Column({nullable:true})
     @Expose()
     company:string;
+
+
+    @Column({nullable:true})
+    @Expose()
+    ip:string;
     // @ManyToOne(() => Section, (section) => section.id, {
     //     nullable: true,
     //     onDelete:'CASCADE'

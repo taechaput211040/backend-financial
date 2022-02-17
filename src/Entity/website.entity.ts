@@ -52,6 +52,10 @@ export class Website {
 
     @Column({nullable:true})
     @Expose()
+    agent_prifix_old:string;
+
+    @Column({nullable:true})
+    @Expose()
     status:boolean;
 
     @Column({nullable:true,default:false})

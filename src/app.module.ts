@@ -13,7 +13,6 @@ import { WebsiteModule } from './Website/website.module';
 import { TopupRefModule } from './Topupref/topupref.module';
 import { ProviderBOModule } from './provider_bo/provider_bo.module';
 import { NotifyModule } from './LineNotify/notify.module';
-import { Members } from './Entity/member.entiry';
 import { DepositNotify } from "src/Entity/deposit.notify.entity";
 import { Notify } from "src/Entity/notify.entity";
 import { ProviderBO } from "src/Entity/provider.bo.entity";
@@ -23,6 +22,8 @@ import { User } from "src/Entity/User.entity";
 import { Website } from "src/Entity/website.entity";
 import { WithdrawNotify } from "src/Entity/withdraw.notify.entity";
 import { GatewayModule } from './Gateway/gateway.module';
+import { Members } from './Member/member.entiry';
+import { MemberModule } from './Member/member.module';
 @Module({ 
   
   imports: [
@@ -48,7 +49,7 @@ import { GatewayModule } from './Gateway/gateway.module';
         username: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME,
-        entities:[Website,User,TopupRef,ProviderBO,Notify,DepositNotify,WithdrawNotify,RegisterNotify], 
+        entities:[Website,User,TopupRef,ProviderBO,Notify,DepositNotify,WithdrawNotify,RegisterNotify,Members], 
         synchronize: true,
         ssl: {
           rejectUnauthorized:false
@@ -80,7 +81,8 @@ import { GatewayModule } from './Gateway/gateway.module';
     SwaggerModule,
     AuthModule,
     NotifyModule,
-    GatewayModule
+    GatewayModule,
+    MemberModule
   ],
   controllers: [AppController],
   providers: [AppService],
