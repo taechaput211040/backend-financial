@@ -97,61 +97,7 @@ export class MemberController {
         this.logger.log('creating');
         return await this.memberService.createMember(input)
     }
-    // @Post('/Wd/:hash')
-    // @UsePipes(new ValidationPipe({ transform: true }))
-    // async withdrawPushNotify(
-    //     @Param('hash') hash: string,
-    //     @Body() input: WithdrawNotifyDto
-    // ) {
-
-    //     const a = await this.memberService.getSettingByHash(hash)
-    //     if (!a) throw new NotFoundException()
-
-    //     const wd = await this.memberService.saveWithdrawTransaction(input)
-    //     await this.cacheManager.del('get_noti_setting' + hash);
-    //     await this.memberService.pushWithdraw(a, wd)
-    // }
-    // @Post('/Regis/:hash')
-    // @UsePipes(new ValidationPipe({ transform: true }))
-    // async memberRegisterPushNotify(
-    //     @Param('hash') hash: string,
-    //     @Body() input: RegisterNotifyDto
-    // ) {
-
-    //     const a = await this.memberService.getSettingByHash(hash)
-    //     if (!a) throw new NotFoundException()
-
-    //     const rg = await this.memberService.saveRegisterTransaction(input)
-    //     await this.cacheManager.del('get_noti_setting' + hash);
-    //     await this.memberService.pushRegister(a, rg)
-    // }
-    // @Post()
-    // @UseInterceptors(ClassSerializerInterceptor)
-    // @UsePipes(new ValidationPipe({ transform: true }))
-    // async createNotifySetting(
-    //     @Body() input: CreateNotifyDto,
-    //     @Req() request: Request
-    // ) {
-    //     if (request.headers['key'] != process.env.AUTH_SECRET) throw new UnauthorizedException()
-
-    //     return await this.memberService.createSetting(input)
-
-    // }
-    // @Patch('/:hash')
-    // @UsePipes(new ValidationPipe({ transform: true }))
-    // async updateWebNotify(
-    //     @Param('hash') hash: string,
-    //     @Body() input: UpdateNotifyDto,
-    //     @Req() request: Request
-    // ) {
-
-    //     if (request.headers['key'] != process.env.AUTH_SECRET) throw new UnauthorizedException()
-    //     let b = await this.memberService.getSettingByHash(hash)
-    //     this.logger.log(hash)
-    //     if (!b) throw new NotFoundException()
-    //     await this.cacheManager.del('get_noti_setting' + hash);
-    //     return await this.memberService.updateSetting(b, input)
-    // }
+   
 
 
     @Delete('/:hash')

@@ -46,6 +46,10 @@ export class Website {
     @Expose()
     company:string;
 
+    @Column({nullable:true})
+    @Expose()
+    company_name:string;
+
     @Column({nullable:true,length:1024})
     @Expose()
     agent_prefix:string;

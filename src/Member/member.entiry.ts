@@ -146,7 +146,7 @@ export class Members {
     @Expose()
     parent_username:string;
 
-    @Column({nullable:true})
+    @Column({nullable:true,default:'common'})
     @Expose()
     group:string;
 
