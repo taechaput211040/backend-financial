@@ -12,7 +12,7 @@ export class WebsiteService {
     private readonly logger = new Logger(WebsiteService.name)
     constructor(
         private httpService: HttpService,
-        @InjectRepository(Website)
+        @InjectRepository(Website,'support')
         private readonly WebsiteRepository: Repository<Website>,
         private readonly configService: ConfigService,
 

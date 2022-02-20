@@ -12,6 +12,7 @@ import { CreateNotifyDto } from 'src/Input/create.notify.setting.dto';
 import { RegisterNotifyDto } from 'src/Input/create.register.notify.dto';
 import { WithdrawNotifyDto } from 'src/Input/create.withdraw.notify.dto';
 import { DepositDto } from 'src/Input/deposit.dto';
+import { UpdateMemberDto } from 'src/Input/update.member.dto.ts';
 import { UpdateNotifyDto } from 'src/Input/update.notify.dto';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Members } from './member.entiry';
@@ -32,7 +33,7 @@ export class MemberService {
 
 
     public async getMember(username: string): Promise<Members> {
-        this.logger.log(username)
+       
         return await this.memberRepository.findOne({ where: { username: username } });
 
     }
@@ -43,6 +44,13 @@ export class MemberService {
        this.logger.log('member created');
        return member
     }
-
+    public async updateMember(input: UpdateMemberDto) {
+    
+        
+        const member =   await this.memberRepository.save(input)
+          this.logger.log('member saved');
+          
+          return member
+       }
 }
 

@@ -4,7 +4,6 @@ import { plainToClass } from "class-transformer";
 import { AuthGuardJwt } from "src/auth/autn-guard.jwt";
 import { SetTurnDto } from "src/Input/setturn.dto";
 import { WebsiteDto } from "src/Input/website.dto";
-import { ProviderBOService } from "src/provider_bo/provider_bo.service";
 import { WebsiteService } from "./website.service";
 
 
@@ -16,7 +15,6 @@ export class WebsiteController {
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
 
         private readonly websiteService: WebsiteService,
-        private readonly providerBOService: ProviderBOService,
         // private readonly transectionService: TransectionService,
     ) { }
 
@@ -106,21 +104,7 @@ export class WebsiteController {
         }
 
     }
-    @Get('/ProviderBO')
-    @UseInterceptors(ClassSerializerInterceptor)
-    async getProviderBO(
-        @Query('opcode') opcode
-
-    ) {
-        this.logger.log('getProviderBO  hit');
-        this.logger.log(opcode)
-
-
-        const link = await this.providerBOService.getProviderBO(opcode)
-      
-        return link
-
-    }
+ 
     @Get('/Rico/Member/Deposit/Daily')
     @UseInterceptors(ClassSerializerInterceptor)
     async getMemberDepositDaily(

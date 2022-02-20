@@ -5,28 +5,24 @@ import { SwaggerModule } from "@nestjs/swagger";
 import { WebsiteController } from "./website.controller";
 import { WebsiteService } from "./website.service";
 import { Website } from "src/Entity/website.entity";
-import { SmartService } from "./smart.service";
-import { SmartApiController } from "./smart.api.controller";
-import { ProviderBOService } from "src/provider_bo/provider_bo.service";
-import { ProviderBO } from "src/Entity/provider.bo.entity";
 
 @Module({
   // imports:[],
   // controllers:[],
   // providers:[]
 
-  imports: [TypeOrmModule.forFeature([Website,ProviderBO]), CacheModule.register({
+  imports: [TypeOrmModule.forFeature([Website], 'support'), CacheModule.register({
     store: redisStore,
     host: process.env.REDIS_SERVER,
     port: process.env.REDIS_PORT,
     password: process.env.REDIS_PASSWORD,
     ttl: null,
-    db: 4
+    db: 7
 
   }),
     HttpModule,
     SwaggerModule],
-  controllers: [WebsiteController,SmartApiController],
-  providers: [WebsiteService,SmartService,ProviderBOService]
+  controllers: [WebsiteController],
+  providers: [WebsiteService]
 })
 export class WebsiteModule { }

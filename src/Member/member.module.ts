@@ -11,14 +11,17 @@ import { RegisterNotify } from 'src/Entity/register.notify.entity';
 import { Members } from './member.entiry';
 import { WebsiteService } from 'src/Website/website.service';
 import { Website } from 'src/Entity/website.entity';
+import { WebsiteModule } from 'src/Website/website.module';
 @Module({
-    imports: [TypeOrmModule.forFeature([Notify,DepositNotify,WithdrawNotify,RegisterNotify,Members,Website]), CacheModule.register({
+    imports: [TypeOrmModule.forFeature([Members]), 
+    TypeOrmModule.forFeature([Website],'support'), 
+    CacheModule.register({
         store: redisStore,
         host: process.env.REDIS_SERVER,
         port: process.env.REDIS_PORT,
         password: process.env.REDIS_PASSWORD,
         ttl: null,
-        db: 4
+        db: 7
     
       }),
         HttpModule,

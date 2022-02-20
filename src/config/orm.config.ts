@@ -26,7 +26,7 @@ export default registerAs('orm.config',():TypeOrmModuleOptions=>(  {
     username: process.env.DB_USER, 
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    entities:[Website,Members], 
+    entities:[Members], 
     synchronize:true,
     // debug: true    :: for debug mysql
     ssl: {
