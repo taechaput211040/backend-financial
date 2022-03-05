@@ -30,15 +30,21 @@ export class MemberController {
         await this.cacheManager.reset()
         return 'ok'
     }
-    @Get(':username')
+    @Get(':displayname')
     async getMemberInfo(
-        @Param('username') username:string
+        @Param('displayname') username:string
     ) {
         const value = await this.cacheManager.get('_member_info_' + username.toLocaleLowerCase());
 
         if (value) return plainToClass(Members,value) 
-        const member = await this.memberService.getMember(this.decodeSeamlessUsername(username.toLocaleLowerCase()))
+        let member = await this.memberService.getMember(username.toLocaleLowerCase())
         if (!member) throw new NotFoundException()
+     
+        if(!member.aff_id) {
+            this.logger.log('no aff_id  hit');
+        const web = await this.websiteService.getWebInfoByHashAllData(member.hash)
+       member = await this.memberService.generateAffid(member,web);
+        }
         await this.cacheManager.set('_member_info_' + username.toLocaleLowerCase(), member, { ttl: null });
         return member
     }
@@ -94,6 +100,20 @@ export class MemberController {
         return cache_data
     }
 
+    @Post('/Migrate')
+    @UsePipes(new ValidationPipe({ transform: true }))
+    async migrateMember(
+        @Body() input: any
+    ) {
+        this.logger.log('migrateMember  hit');
+      
+
+      let members =[new CreateMemberDto()]
+      members = input.data
+      this.logger.log(members)
+    //   return members
+        await this.memberService.saveOrUpdateManyMember(members)
+    }
     @Post()
     @UsePipes(new ValidationPipe({ transform: true }))
     async createMember(
@@ -106,10 +126,10 @@ export class MemberController {
         if (!a) throw new NotFoundException()
 
         const member = await this.memberService.getMember(input.username.toLocaleLowerCase())
-        if (member) throw new BadRequestException("Duplicate Username")
+        // if (member) throw new BadRequestException("Duplicate Username")
         input.username = input.username.toLocaleLowerCase()
         this.logger.log('creating');
-        return await this.memberService.createMember(input)
+        return await this.memberService.saveOrUpdateManyMember(input)
     }
 
     @Put()
@@ -125,7 +145,7 @@ export class MemberController {
         const member = await this.memberService.getMember(input.username.toLocaleLowerCase())
         if (!member) throw new NotFoundException()
        
-        const result = await this.memberService.updateMember(input)
+        const result = await this.memberService.updateMember(member,input)
         await this.cacheManager.del('_member_info_' + input.username.toLocaleLowerCase())
         await this.cacheManager.del('_member_' +  input.username.toLocaleLowerCase())
         await this.cacheManager.del('_member_' + this.generateSeamlessUsername(member))

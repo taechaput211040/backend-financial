@@ -4,6 +4,7 @@ import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, Primary
 
 
 @Entity()
+@Unique(["username"]) 
 export class Members {
     constructor(
         partial?: Partial<Members|Members[]>
@@ -14,6 +15,8 @@ export class Members {
     @PrimaryGeneratedColumn("uuid")
     @Expose() // npm i --save class-validator class-transformer
     id: string;
+
+    
   
     // @CreateDateColumn({ type: "datetime", default: () => moment().format()})
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
@@ -21,6 +24,12 @@ export class Members {
 
     @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
     public updated_at: Date;
+
+
+    @Column({nullable:true})
+    @Expose()
+    rico_id:number;
+
 
     @Column({nullable:true})
     @Expose()

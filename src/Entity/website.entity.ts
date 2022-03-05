@@ -14,7 +14,7 @@ export class Website {
     @PrimaryGeneratedColumn("uuid")
     @Expose() // npm i --save class-validator class-transformer
     id: string;
- 
+  
     // @CreateDateColumn({ type: "datetime", default: () => moment().format()})
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
     public created_at: Date;

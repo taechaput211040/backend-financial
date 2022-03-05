@@ -6,6 +6,11 @@ export class CreateMemberDto {
 
     // npm i --save class-validator class-transformer
     // require
+
+    @IsNumber()
+    @IsOptional()
+    rico_id: number;
+
     @IsString()
     name: string;
 
@@ -13,10 +18,12 @@ export class CreateMemberDto {
     lastname: string;
 
     @IsString()
+    @IsOptional()
     bankName: string;
 
   
     @IsString()
+    @IsOptional()
     bankAcc: string;
 
   

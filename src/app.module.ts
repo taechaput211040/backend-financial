@@ -60,7 +60,7 @@ import { MemberModule } from './Member/member.module';
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME_SUPPORT,
         entities: [Website],
-        synchronize: false,
+        synchronize: true,
         ssl: {
           rejectUnauthorized:false
           // ca: atob(process.env.CROCK_DB_CERT),
