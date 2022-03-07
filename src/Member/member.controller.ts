@@ -32,18 +32,18 @@ export class MemberController {
     }
     @Get(':displayname')
     async getMemberInfo(
-        @Param('displayname') username:string
+        @Param('displayname') username: string
     ) {
         const value = await this.cacheManager.get('_member_info_' + username.toLocaleLowerCase());
 
-        if (value) return plainToClass(Members,value) 
+        if (value) return plainToClass(Members, value)
         let member = await this.memberService.getMember(username.toLocaleLowerCase())
         if (!member) throw new NotFoundException()
-     
-        if(!member.aff_id) {
+
+        if (!member.aff_id) {
             this.logger.log('no aff_id  hit');
-        const web = await this.websiteService.getWebInfoByHashAllData(member.hash)
-       member = await this.memberService.generateAffid(member,web);
+            const web = await this.websiteService.getWebInfoByHashAllData(member.hash)
+            member = await this.memberService.generateAffid(member, web);
         }
         await this.cacheManager.set('_member_info_' + username.toLocaleLowerCase(), member, { ttl: null });
         return member
@@ -99,19 +99,51 @@ export class MemberController {
 
         return cache_data
     }
+    @Get('/Withdraw/:from/:to/:displayname')
+    async getMemberWithdrawFromTo(
+        @Param('displayname') displayname: string,
+        @Param('from') from: string,
+        @Param('to') to: string,
+    ) {
+        this.logger.log('getMemberWithdrawFromTo  hit');
+        // const value = await this.cacheManager.get('_member_' + displayname.toLocaleLowerCase());
 
+        // if (value) return value
+
+        const member = await this.memberService.getMember(displayname.toLocaleLowerCase())
+        if (!member) throw new NotFoundException()
+
+        return await this.websiteService.getWithdrawMemberFromTo(from, to, member)
+
+    }
+    @Get('/Credit/:displayname')
+    async getCreditByDisplayname(
+        @Param('displayname') displayname: string
+
+    ) {
+        this.logger.log('getCreditByDisplayname  hit');
+        // const value = await this.cacheManager.get('_member_' + displayname.toLocaleLowerCase());
+
+        // if (value) return value
+
+        const member = await this.memberService.getMember(displayname.toLocaleLowerCase())
+        if (!member) throw new NotFoundException()
+
+        return await this.memberService.getCreditByDisplayname( member)
+
+    }
     @Post('/Migrate')
     @UsePipes(new ValidationPipe({ transform: true }))
     async migrateMember(
         @Body() input: any
     ) {
         this.logger.log('migrateMember  hit');
-      
 
-      let members =[new CreateMemberDto()]
-      members = input.data
-      this.logger.log(members)
-    //   return members
+
+        let members = [new CreateMemberDto()]
+        members = input.data
+        this.logger.log(members)
+        //   return members
         await this.memberService.saveOrUpdateManyMember(members)
     }
     @Post()
@@ -140,14 +172,14 @@ export class MemberController {
 
         this.logger.log('updateMember hit');
 
-       
+
 
         const member = await this.memberService.getMember(input.username.toLocaleLowerCase())
         if (!member) throw new NotFoundException()
-       
-        const result = await this.memberService.updateMember(member,input)
+
+        const result = await this.memberService.updateMember(member, input)
         await this.cacheManager.del('_member_info_' + input.username.toLocaleLowerCase())
-        await this.cacheManager.del('_member_' +  input.username.toLocaleLowerCase())
+        await this.cacheManager.del('_member_' + input.username.toLocaleLowerCase())
         await this.cacheManager.del('_member_' + this.generateSeamlessUsername(member))
         return result
     }

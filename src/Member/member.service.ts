@@ -1,4 +1,4 @@
-import { HttpService, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, HttpService, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DepositNotify } from 'src/Entity/deposit.notify.entity';
@@ -16,6 +16,7 @@ import { UpdateMemberDto } from 'src/Input/update.member.dto.ts';
 import { UpdateNotifyDto } from 'src/Input/update.notify.dto';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Members } from './member.entiry';
+import { AxiosResponse } from 'axios'; 
 const qs = require('querystring');
 @Injectable()
 export class MemberService {
@@ -137,6 +138,21 @@ export class MemberService {
             console.log(error.response.data)
         }
         return member
+    }
+
+    public async getCreditByDisplayname(member : Members): Promise<AxiosResponse | object>{
+        const headersRequest = {
+            'Content-Type': 'application/json', // afaik this one is not needed
+            'Authorization': `${process.env.SMART_ADMIN_TOKEN}`,
+        };
+        const url = `${process.env.SMART_URL}/api/v1/member/${member.member_uuid}`
+
+        try {
+            const res = await this.httpService.get(url,{headers:headersRequest}).toPromise()
+            return res.data
+        } catch (error) {
+            throw new BadRequestException(error.response.data)
+        }
     }
 }
 
