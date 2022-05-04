@@ -73,7 +73,8 @@ import { MemberModule } from './Member/member.module';
     
     SwaggerModule,
    WebsiteModule,
-    MemberModule
+    MemberModule,
+    AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],

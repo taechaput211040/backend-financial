@@ -56,7 +56,7 @@ export class Website {
 
     @Column({nullable:true})
     @Expose()
-    agent_prifix_old:string;
+    agent_prefix_old:string;
 
     @Column({nullable:true})
     @Expose()
@@ -100,6 +100,18 @@ export class Website {
     
 
    
+    @Column({nullable:true,default:""})
+    @Expose()
+    member_link:string;
+
+    @Column({nullable:true,default:""})
+    @Expose()
+    auto_link:string
+
+
+    @Column({nullable:true,default:0})
+    @Expose()
+    share:number
 
 
     // @ManyToOne(() => Section, (section) => section.id, {

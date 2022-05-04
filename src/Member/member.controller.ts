@@ -1,4 +1,4 @@
-import { BadRequestException, Body, CACHE_MANAGER, ClassSerializerInterceptor, Controller, Delete, Get, Inject, Logger, NotFoundException, Param, Patch, Post, Put, Req, SerializeOptions, UnauthorizedException, UseInterceptors, UsePipes, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, Body, CACHE_MANAGER, ClassSerializerInterceptor, Controller, Delete, Get, Inject, Logger, NotFoundException, Param, Patch, Post, Put, Req, SerializeOptions, UnauthorizedException, UseGuards, UseInterceptors, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Request } from 'express';
 import { DepositNotifyDto } from 'src/Input/create.deposit.notify.dto';
 import { CreateNotifyDto } from 'src/Input/create.notify.setting.dto';
@@ -12,6 +12,9 @@ import { WebsiteService } from 'src/Website/website.service';
 import { Members } from './member.entiry';
 import { plainToClass } from 'class-transformer';
 import { UpdateMemberDto } from 'src/Input/update.member.dto.ts';
+import { AuthGuardJwt } from 'src/auth/autn-guard.jwt';
+import { AuthGuard } from '@nestjs/passport';
+import { JwtStrategy } from 'src/auth/jwt.strategy';
 @Controller('api/Member')
 @SerializeOptions({ strategy: 'excludeAll' })
 export class MemberController {
@@ -23,7 +26,14 @@ export class MemberController {
 
 
     ) { }
-
+ 
+    @Get('/testauth')
+    @UseGuards(AuthGuard('jwt'))
+    async testauth(
+    ) {
+        await this.cacheManager.reset()
+        return 'ok'
+    }
     @Get('/Reset')
     async resetCache(
     ) {

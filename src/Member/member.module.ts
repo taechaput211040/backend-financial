@@ -12,10 +12,11 @@ import { Members } from './member.entiry';
 import { WebsiteService } from 'src/Website/website.service';
 import { Website } from 'src/Entity/website.entity';
 import { WebsiteModule } from 'src/Website/website.module';
+import { AuthModule } from 'src/auth/auth.module';
 @Module({
     imports: [TypeOrmModule.forFeature([Members]), 
     TypeOrmModule.forFeature([Website],'support'), 
-    CacheModule.register({
+    CacheModule.register({ 
         store: redisStore,
         host: process.env.REDIS_SERVER,
         port: process.env.REDIS_PORT,
@@ -25,7 +26,8 @@ import { WebsiteModule } from 'src/Website/website.module';
     
       }),
         HttpModule,
-        SwaggerModule],
+        SwaggerModule
+      ],
     controllers: [MemberController],
     providers: [MemberService,WebsiteService],
 })

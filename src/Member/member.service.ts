@@ -17,6 +17,7 @@ import { UpdateNotifyDto } from 'src/Input/update.notify.dto';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Members } from './member.entiry';
 import { AxiosResponse } from 'axios'; 
+import { CreateAffMemberSettingDto } from 'src/Input/create.aff.member.setting.dto';
 const qs = require('querystring');
 @Injectable()
 export class MemberService {
@@ -95,49 +96,65 @@ export class MemberService {
         //getDefault aff seting
         let setting_result
         let setting_id
-        const aff_setting_url = `${process.env.AFF_SETTING}/api/MainSetting/${member.hash}`
+        const headersRequest = {
+            'origin': `${web.website}` // afaik this one is not needed
+          
+        };
+        const aff_setting_url = `${process.env.AFF_SETTING}/api/Aff/Member/${member.username}`
         this.logger.log('getting aff setting');
         try {
 
-            setting_result = await this.httpService.get(aff_setting_url).toPromise()
-            setting_id = setting_result.data.config.find((x) => {
-                return x.config_name == "default"
-
-            })
-            this.logger.log('getting aff setting ok');
+            setting_result = await this.httpService.get(aff_setting_url,{headers:headersRequest}).toPromise()
+            setting_id = setting_result.data.setting_id
+            member.aff_id = setting_result.data.aff_id
+            this.logger.log('registering aff member ok');
+            await this.memberRepository.save(member)
+            this.logger.log('member saved');
+            return member
+        
         } catch (error) {
             this.logger.log('getting aff setting error');
             console.log(error.response.data)
             return member
         }
-
+    
         //do register aff null parent
 
-        const aff_member = `${process.env.AFF_MEMBER}/api/Aff/RegisterNullParent`
-        const data = {
-            username: member.username,
-            company: member.company,
-            agent: member.agent,
-            child_config_id: setting_id.id,
-            aff_link: process.env.AFF_LINK,
-            aff_register_link: process.env.AFF_REGISTER_LINK,
-            member_link: `https://member.${web.website}`,
-            hash: member.hash
-        }
-        this.logger.log('registering aff member ');
-        try {
-            let res = await this.httpService.post(aff_member, data).toPromise()
-            console.log(res.data)
-            member.aff_id = res.data.id
-            this.logger.log('registering aff member ok');
-            await this.memberRepository.save(member)
-            this.logger.log('member saved');
-            return member
-        } catch (error) {
-            this.logger.log('registering aff member error');
-            console.log(error.response.data)
-        }
-        return member
+    //     const aff_member = `${process.env.AFF_MEMBER}/api/Aff/RegisterNullParent`
+    //     const data = {
+    //         username: member.username,
+    //         company: member.company,
+    //         agent: member.agent,
+    //         child_config_id: setting_id.id,
+    //         aff_link: process.env.AFF_LINK,
+    //         aff_register_link: process.env.AFF_REGISTER_LINK,
+    //         member_link: `https://member.${web.website}`,
+    //         hash: member.hash
+    //     }
+    //     this.logger.log('registering aff member ');
+    //     try {
+    //         let res = await this.httpService.post(aff_member, data).toPromise()
+    //         console.log(res.data)
+    //         member.aff_id = res.data.id
+    //         this.logger.log('registering aff member ok');
+    //         await this.memberRepository.save(member)
+    //         this.logger.log('member saved');
+    //         return member
+    //     } catch (error) {
+    //         this.logger.log('registering aff member error');
+    //         console.log(error.response.data)
+    //     }
+
+    //         // register aff_setting
+    //         try {
+    //             const register_setting_url =  `${process.env.AFF_SETTING}/api/Aff/Member`
+    // const setting_data = new CreateAffMemberSettingDto()
+    // setting_data.aff_id = res.data.id
+    //             await this.httpService.post(register_setting_url,)
+    //         } catch (error) {
+                
+    //         }
+    //     return member
     }
 
     public async getCreditByDisplayname(member : Members): Promise<AxiosResponse | object>{

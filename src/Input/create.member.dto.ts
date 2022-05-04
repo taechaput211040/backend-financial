@@ -29,8 +29,9 @@ export class CreateMemberDto {
   
     @IsString()
     phone: string;
-
-
+    @IsString()
+    @IsOptional()
+    bankAccRef: string;
     @IsNumber()
     bonusid: number;
     

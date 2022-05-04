@@ -8,26 +8,17 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./jwt.strategy";
 import * as redisStore from 'cache-manager-redis-store';
-import { GatewayService } from "src/Gateway/gateway.service";
 
 @Module({
-    imports:[TypeOrmModule.forFeature([User,Website]),JwtModule.registerAsync({
+    imports:[TypeOrmModule.forFeature(),JwtModule.registerAsync({
         useFactory:()=>({
             secret:process.env.AUTH_SECRET,
             signOptions:{
                 expiresIn:'60m'
             }
         })
-    }),HttpModule, CacheModule.register({
-        store: redisStore,
-        host: process.env.REDIS_SERVER,
-        port: process.env.REDIS_PORT,
-        password: process.env.REDIS_PASSWORD,
-        ttl: null,
-        db: 4
-    
-      }),],
-    providers:[AuthService,JwtStrategy,GatewayService],
+    })],
+    providers:[AuthService,JwtStrategy],
     controllers:[AuthController]
 })
 export class AuthModule{}
