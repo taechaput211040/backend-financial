@@ -20,14 +20,14 @@ function atob(b64txt) {
 }
 
 export default registerAs('orm.config',():TypeOrmModuleOptions=>(  {
-  type: 'cockroachdb', 
+  type: 'cockroachdb',  
     host: process.env.DB_HOST, 
     port: Number(process.env.DB_PORT),
     username: process.env.DB_USER, 
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     entities:[Members], 
-    synchronize:true,
+    synchronize:false,
     // debug: true    :: for debug mysql
     ssl: {
       rejectUnauthorized:false

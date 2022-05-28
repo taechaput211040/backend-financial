@@ -67,9 +67,13 @@ export class MemberController {
         const value = await this.cacheManager.get('_member_' + username.toLocaleLowerCase());
 
         if (value) return value
-
+const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase())
         const member = await this.memberService.getMember(this.decodeSeamlessUsername(username.toLocaleLowerCase()))
-        if (!member) throw new NotFoundException()
+        if (!member) {
+       
+            throw new NotFoundException()
+        }
+
 
         const cache_data = {
             companyKey: member.company,

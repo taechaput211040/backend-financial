@@ -112,7 +112,7 @@ export class Website {
     @Column({nullable:true,default:0})
     @Expose()
     share:number
-
+ 
 
     // @ManyToOne(() => Section, (section) => section.id, {
     //     nullable: true,
