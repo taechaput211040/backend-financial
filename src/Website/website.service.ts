@@ -368,7 +368,7 @@ export class WebsiteService {
 
 
         let url = `${website.auto_link}/api/Support/GetSumWithdrawReport/${from}/${to}/${member.username}`
-
+this.logger.log(url)
         try {
             const res = await this.httpService.get(url).toPromise()
             return res.data

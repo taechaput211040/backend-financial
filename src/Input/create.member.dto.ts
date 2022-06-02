@@ -11,6 +11,8 @@ export class CreateMemberDto {
     @IsOptional()
     rico_id: number;
 
+
+   
     @IsString()
     name: string;
 
@@ -33,6 +35,7 @@ export class CreateMemberDto {
     @IsOptional()
     bankAccRef: string;
     @IsNumber()
+    @IsOptional()
     bonusid: number;
     
     @IsString()
@@ -44,12 +47,15 @@ export class CreateMemberDto {
 
 
     @IsString()
+    @IsOptional()
     hash: string;
 
     @IsString()
+    @IsOptional()
     agent: string;
 
     @IsString()
+    @IsOptional()
     company: string;
 
 

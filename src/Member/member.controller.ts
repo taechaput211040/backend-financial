@@ -167,13 +167,13 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
     ) {
 
         this.logger.log('createMember hit');
+        // const a = await this.websiteService.getWebInfoByHashAllData(input.hash)
+        // if (!a) throw new NotFoundException()
 
-        const a = await this.websiteService.getWebInfoByHashAllData(input.hash)
-        if (!a) throw new NotFoundException()
-
-        const member = await this.memberService.getMember(input.username.toLocaleLowerCase())
-        // if (member) throw new BadRequestException("Duplicate Username")
+        // const member = await this.memberService.getMember(input.username.toLocaleLowerCase())
+        // // if (member) throw new BadRequestException("Duplicate Username")
         input.username = input.username.toLocaleLowerCase()
+       
         this.logger.log('creating');
         return await this.memberService.saveOrUpdateManyMember(input)
     }
