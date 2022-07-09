@@ -15,6 +15,7 @@ import { UpdateMemberDto } from 'src/Input/update.member.dto.ts';
 import { AuthGuardJwt } from 'src/auth/autn-guard.jwt';
 import { AuthGuard } from '@nestjs/passport';
 import { JwtStrategy } from 'src/auth/jwt.strategy';
+import { MemberConfigService } from './member.config.service';
 @Controller('api/Member')
 @SerializeOptions({ strategy: 'excludeAll' })
 export class MemberController {
@@ -22,8 +23,8 @@ export class MemberController {
     constructor(
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
         private readonly memberService: MemberService,
-        private readonly websiteService: WebsiteService
-
+        private readonly websiteService: WebsiteService,
+        private readonly memberConfigService: MemberConfigService
 
     ) { }
  
@@ -113,6 +114,38 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
 
         return cache_data
     }
+
+    @Get('/ByProviderUsername/:provider/:providerUsername')
+    async getMemberByproviderUsername(
+        @Param('providerUsername') providerUsername: string,
+        @Param('provider') provider: string
+    ) {
+
+        this.logger.log('ByProviderUsername  hit');
+        const value = await this.cacheManager.get('_provider_username_' + providerUsername.toLocaleLowerCase()+'_'+provider);
+
+        if (value) return value
+        const member_config = await this.memberConfigService.getUsernameByProviderUsername(providerUsername.toLowerCase(),provider.toUpperCase())
+        if (!member_config) {
+       
+            throw new NotFoundException()
+        }
+        const member = await this.memberService.getMember(member_config.username.toLocaleLowerCase())
+        const cache_data = {
+            companyKey: member.company,
+            agentKey: member.agent,
+            username: member_config.username,
+            providerUsername: member_config.provider_username,
+
+        }
+
+       
+     
+       
+        await this.cacheManager.set('_provider_username_' + providerUsername.toLocaleLowerCase()+'_'+provider, cache_data, { ttl: null });
+
+        return cache_data
+    }
     @Get('/Withdraw/:from/:to/:displayname')
     async getMemberWithdrawFromTo(
         @Param('displayname') displayname: string,
@@ -146,6 +179,23 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
         return await this.memberService.getCreditByDisplayname( member)
 
     }
+    
+    @Post('/Realusername')
+    @UsePipes(new ValidationPipe({ transform: true }))
+    async Realusername(
+        @Body() input: any
+    ) {
+        this.logger.log('Realusername  hit');
+        const cacheName = '_realusername_'+input.username.toUpperCase() + '_'+input.provider
+        const value =  await this.cacheManager.get(cacheName)
+       if(value) return
+        this.logger.log(input);
+        const member_config =await this.memberConfigService.getByUsername(input.username.toLowerCase(),input.provider.toUpperCase())
+        if(member_config) return
+        await this.memberConfigService.saveRealUsername(input.username,input.provider,input.opcode)
+        
+        await this.cacheManager.set('_realusername_'+input.username.toUpperCase() + '_'+input.provider, '1', { ttl: null });
+    }
     @Post('/Migrate')
     @UsePipes(new ValidationPipe({ transform: true }))
     async migrateMember(
@@ -172,7 +222,7 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
 
         // const member = await this.memberService.getMember(input.username.toLocaleLowerCase())
         // // if (member) throw new BadRequestException("Duplicate Username")
-        input.username = input.username.toLocaleLowerCase()
+        input.username = input.username.toLocaleLowerCase() 
        
         this.logger.log('creating');
         return await this.memberService.saveOrUpdateManyMember(input)

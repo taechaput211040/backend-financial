@@ -13,8 +13,11 @@ import { WebsiteService } from 'src/Website/website.service';
 import { Website } from 'src/Entity/website.entity';
 import { WebsiteModule } from 'src/Website/website.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { MemberConfigService } from './member.config.service';
+import { MemberConfig } from 'src/Entity/member.config.entiry';
+import { MemberAgentController } from './member.agent.controller';
 @Module({
-    imports: [TypeOrmModule.forFeature([Members]), 
+    imports: [TypeOrmModule.forFeature([Members,MemberConfig]), 
     TypeOrmModule.forFeature([Website],'support'), 
     CacheModule.register({ 
         store: redisStore,
@@ -27,8 +30,8 @@ import { AuthModule } from 'src/auth/auth.module';
       }),
         HttpModule,
         SwaggerModule
-      ],
-    controllers: [MemberController],
-    providers: [MemberService,WebsiteService],
+      ], 
+    controllers: [MemberController,MemberAgentController],
+    providers: [MemberService,WebsiteService,MemberConfigService],
 })
 export class MemberModule {};

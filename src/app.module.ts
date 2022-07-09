@@ -10,6 +10,7 @@ import { WebsiteModule } from './Website/website.module';
 import { Website } from "src/Entity/website.entity";
 import { Members } from './Member/member.entiry';
 import { MemberModule } from './Member/member.module';
+import { MemberConfig } from './Entity/member.config.entiry';
 @Module({ 
   
   imports: [
@@ -37,8 +38,8 @@ import { MemberModule } from './Member/member.module';
         username: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME,
-        entities:[Members], 
-        synchronize: true,
+        entities:[Members,MemberConfig], 
+        synchronize: false,
         ssl: {
           rejectUnauthorized:false
           // ca: atob(process.env.CROCK_DB_CERT),

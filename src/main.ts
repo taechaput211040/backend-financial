@@ -24,9 +24,9 @@ const setTZ = require('set-tz')
 setTZ('Asia/Bangkok')
   
   
-  await app.listen(5150);
-}
+  await app.listen(5150); 
+} 
 bootstrap();  
-//npm install --save @nestjs/jwt passport-jwt
+//npm install --save @nestjs/jwt passport-jwt 
 //npm install --save-dev @types/passport-jwt
 //npm install --save @nestjs/passport 

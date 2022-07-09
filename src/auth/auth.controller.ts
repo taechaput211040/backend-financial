@@ -1,6 +1,5 @@
 import { Body, CACHE_MANAGER, ClassSerializerInterceptor, Controller, Get, HttpCode, Inject, Logger, Param, Post, Req, Request, SerializeOptions, UnauthorizedException, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { UserDto } from "src/User/create.user.dto";
 import { AuthService } from "./auth.service";
 import { AuthGuardJwt } from "./autn-guard.jwt";
 import { LoginDto } from "./login.dto";

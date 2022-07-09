@@ -2,9 +2,6 @@ import { BadRequestException, HttpService, Injectable, Logger, UnauthorizedExcep
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, SelectQueryBuilder } from "typeorm";
 import { AxiosResponse } from 'axios';import { ConfigService } from '@nestjs/config';
-import { v4 as uuid } from 'uuid';
-import { Website } from 'src/Entity/website.entity';
-import { TopupRefDto } from 'src/Topupref/create.topup.ref.dto';
 
 @Injectable()
 export class SmartService {
@@ -143,41 +140,7 @@ export class SmartService {
             throw new UnauthorizedException();
         }
     }
-    public async depositMain(input:TopupRefDto): Promise<AxiosResponse | object> {
-        const headersRequest = {
-            'Content-Type': 'application/json', // afaik this one is not needed
-            // 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImIxMjYxZmE3LTZmMTQtNDExMy1hMzY0LTU4MTA0MjkxYjkxNiIsInVuaXF1ZV9uYW1lIjoic3VwZXJhZG1pbiIsImlzX3N1cGVyYWRtaW4iOiJ0cnVlIiwibmJmIjoxNjM1ODAwMzU4LCJleHAiOjQ3OTE0NzM5NTgsImlhdCI6MTYzNTgwMDM1OH0.8hwif4RwiKgGriAepU1J6KMn5FogdFOBVebaJtKPMu4'
-            'Authorization': `Bearer ${process.env.SMART_ADMIN_TOKEN}`
-        };
-      
-        // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
-        if(input.amount == 0 || input.amount < 0){
-            throw new BadRequestException('จำนวนเงินต้องมากกว่า 0');
-        }
-       
-    if(input.method == 'deposit'){
-        if(input.provider == 'SMART'){
-            return  await this.deposit(input.username,input.amount)
-        } else {
-            return  await this.deposit_provider(input.username,input.amount,input.provider)
-        }
-
-    } else if(input.method == 'withdraw'){
-        if(input.provider == 'SMART'){
-            return  await this.withdraw(input.username,input.amount)
-        } else {
-            return  await this.withdraw_provider(input.username,input.amount,input.provider)
-        }
-
-    }
-        // try {
-        //     const result = await this.httpService.post(url,{username:username,amount:amount}, { headers: headersRequest }).toPromise();
-        //     return result.data;
-        // } catch (error) {
-        //     console.log(error.response.data);
-        //     throw new BadRequestException(error.response.data);
-        // }
-    }
+   
     public async checkCredit(username:string,provider_code:string): Promise<AxiosResponse | object> {
         const headersRequest = {
             'Content-Type': 'application/json', // afaik this one is not needed
