@@ -125,7 +125,7 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
         const value = await this.cacheManager.get('_provider_username_' + providerUsername.toLocaleLowerCase()+'_'+provider);
 
         if (value) return value
-        const member_config = await this.memberConfigService.getUsernameByProviderUsername(providerUsername.toLowerCase(),provider.toUpperCase())
+        const member_config = await this.memberConfigService.getUsernameByProviderUsername(providerUsername,provider.toUpperCase())
         if (!member_config) {
        
             throw new NotFoundException()
