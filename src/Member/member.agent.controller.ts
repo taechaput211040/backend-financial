@@ -30,7 +30,28 @@ export class MemberAgentController {
         private readonly memberConfigService: MemberConfigService
 
     ) { }
+    @Get('/Reset')
+    async resetCache(
+    ) {
+        await this.cacheManager.reset()
+        return 'ok'
+    }
+    @Get('/Credit/:displayname')
+    async getCreditByDisplayname(
+        @Param('displayname') displayname: string
 
+    ) {
+        this.logger.log('getCreditByDisplayname  hit');
+        // const value = await this.cacheManager.get('_member_' + displayname.toLocaleLowerCase());
+
+        // if (value) return value
+
+        const member = await this.memberService.getMember(displayname.toLocaleLowerCase())
+        if (!member) throw new NotFoundException()
+
+        return await this.memberService.getCreditByDisplayname(member)
+
+    }
     @Get('/Search/:company/:agent/:keyword')
     async searchMember(
         @Param('keyword') keyword: string,
@@ -40,13 +61,8 @@ export class MemberAgentController {
     ) {
         return await this.memberService.searchMemberByUsername(pageOptionsDto, company.toLowerCase(), agent.toLowerCase(), keyword.toLowerCase().trim())
     }
-    @Get('/Reset')
-    async resetCache(
-    ) {
-        await this.cacheManager.reset()
-        return 'ok'
-    }
-    @Get(':company/:agent')
+ 
+    @Get('/SubScribe/:company/:agent')
     async getMemberPaginate(
         @Param('company') company: string,
         @Param('agent') agent: string,
@@ -114,22 +130,7 @@ export class MemberAgentController {
     }
 
 
-    @Get('/Credit/:displayname')
-    async getCreditByDisplayname(
-        @Param('displayname') displayname: string
-
-    ) {
-        this.logger.log('getCreditByDisplayname  hit');
-        // const value = await this.cacheManager.get('_member_' + displayname.toLocaleLowerCase());
-
-        // if (value) return value
-
-        const member = await this.memberService.getMember(displayname.toLocaleLowerCase())
-        if (!member) throw new NotFoundException()
-
-        return await this.memberService.getCreditByDisplayname(member)
-
-    }
+ 
 
     private generateSeamlessUsername(member: Members) {
         let seamless_username = member.company + member.agent + member.username

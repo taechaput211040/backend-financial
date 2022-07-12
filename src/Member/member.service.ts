@@ -130,7 +130,7 @@ export class MemberService {
         }
         const url = process.env.SMART_URL + '/api/Credit/Deposit';
     
-   
+   console.log(url)
         try {
           const result = await this.httpService
             .post(url, { username: username, amount: amount }, { headers: headersRequest })
@@ -287,10 +287,10 @@ export class MemberService {
     public async getCreditByDisplayname(member: Members): Promise<AxiosResponse | object> {
         const headersRequest = {
             'Content-Type': 'application/json', // afaik this one is not needed
-            'Authorization': `${process.env.SMART_ADMIN_TOKEN}`,
+            'Authorization': `Bearer ${process.env.SMART_OLD_ADMIN_TOKEN}`,
         };
-        const url = `${process.env.SMART_URL}/api/v1/member/${member.member_uuid}`
-
+        const url = `${process.env.SMART_URL_OLD}/api/v1/member/${member.member_uuid}`
+        // const url =`https://agent-service-backend-kdz5uqbpia-as.a.run.app/api/v1/member/6d0fca9f932e4fe1857e13849ca2182c`
         try {
             const res = await this.httpService.get(url, { headers: headersRequest }).toPromise()
             return res.data
