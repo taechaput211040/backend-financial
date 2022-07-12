@@ -19,6 +19,8 @@ import { MemberConfigService } from './member.config.service';
 import { PageOptionsDto } from 'src/Page/page.option.dto';
 import { CreateMemberAgentDto } from 'src/Input/create.member.agent.dto';
 import { TopupSmartDto } from 'src/Input/topup.smart.dto';
+import { ChangePasswordDto } from 'src/Input/change.password.dto';
+import { LockUserDto } from 'src/Input/lock.user.dto';
 @Controller('api/Member/Agent')
 @SerializeOptions({ strategy: 'excludeAll' })
 export class MemberAgentController {
@@ -53,6 +55,7 @@ export class MemberAgentController {
 
     }
     @Get('/Search/:company/:agent/:keyword')
+    @UseInterceptors(ClassSerializerInterceptor)
     async searchMember(
         @Param('keyword') keyword: string,
         @Param('company') company: string,
@@ -63,6 +66,7 @@ export class MemberAgentController {
     }
  
     @Get('/SubScribe/:company/:agent')
+    @UseInterceptors(ClassSerializerInterceptor)
     async getMemberPaginate(
         @Param('company') company: string,
         @Param('agent') agent: string,
@@ -129,9 +133,48 @@ export class MemberAgentController {
         return result
     }
 
+    @Patch('/Password')
+    @UsePipes(new ValidationPipe({ transform: true }))
+    async chagePassword(
+        @Body() input: ChangePasswordDto
+    ) {
 
+        this.logger.log('chagePassword hit');
+
+
+
+        const member = await this.memberService.getMemberById(input.id)
+        if (!member) throw new NotFoundException()
+        member.password = input.password
+        const result = await this.memberService.saveMemberEntity(member)
+        await this.memberService.changePasswordSmart(member,result.password)
+        await this.websiteService.changePasswordRico(member,result.password)
+        await this.cacheManager.del('_member_info_' + result.username.toLocaleLowerCase())
+        await this.cacheManager.del('_member_' + result.username.toLocaleLowerCase())
+        await this.cacheManager.del('_member_' + this.generateSeamlessUsername(member))
+        return result
+    }
  
+    @Patch('/Status')
+    @UsePipes(new ValidationPipe({ transform: true }))
+    async LockUser(
+        @Body() input: LockUserDto
+    ) {
 
+        this.logger.log('LockUser hit');
+
+
+
+        const member = await this.memberService.getMemberById(input.id)
+        if (!member) throw new NotFoundException()
+        member.status = input.status
+        const result = await this.memberService.saveMemberEntity(member)
+        await this.websiteService.changeStatusRico(member,input.status)
+        await this.cacheManager.del('_member_info_' + result.username.toLocaleLowerCase())
+        await this.cacheManager.del('_member_' + result.username.toLocaleLowerCase())
+        await this.cacheManager.del('_member_' + this.generateSeamlessUsername(member))
+        return result
+    }
     private generateSeamlessUsername(member: Members) {
         let seamless_username = member.company + member.agent + member.username
         if (seamless_username.length > 16) { seamless_username = seamless_username.slice(0, 16) }

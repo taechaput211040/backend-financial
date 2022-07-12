@@ -1,7 +1,7 @@
 import { BadRequestException, HttpService, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, SelectQueryBuilder } from "typeorm";
-import { AxiosResponse } from 'axios'; 
+import { AxiosResponse } from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuid } from 'uuid';
 import { Website } from 'src/Entity/website.entity';
@@ -49,7 +49,7 @@ export class WebsiteService {
 
     public async getWebInfo(website: string): Promise<Website> {
         return await this.WebsiteRepository.findOne({
-            
+
             where: {
                 website: website,
 
@@ -58,7 +58,7 @@ export class WebsiteService {
     }
     public async getWebInfoByHash(hash: string): Promise<Website> {
         return await this.WebsiteRepository.findOne({
-            select: ['website','auto_link','member_link'],
+            select: ['website', 'auto_link', 'member_link'],
             where: {
                 microservice_hash: hash,
 
@@ -82,11 +82,11 @@ export class WebsiteService {
         };
 
 
-    
-        const url_membercheck =   web.auto_link + '/api/Support/membercheck/' + username.toLowerCase().trim()
-        const url_getCredit =  web.auto_link + '/api/Support/getcredit/' + username.toLowerCase().trim()
+
+        const url_membercheck = web.auto_link + '/api/Support/membercheck/' + username.toLowerCase().trim()
+        const url_getCredit = web.auto_link + '/api/Support/getcredit/' + username.toLowerCase().trim()
         const url_winlose = web.auto_link + '/api/Support/winlose/' + username.toLowerCase().trim()
-    
+
         if (!provider) {
             provider = null
         }
@@ -128,8 +128,8 @@ export class WebsiteService {
             'Content-Type': 'application/json', // afaik this one is not needed
             'Authorization': `${process.env.RICO_AUTH}`,
         };
-        
-     
+
+
         const url_memberdetail = web.auto_link + '/api/Support/memberinfo/' + username.toLowerCase().trim()
 
 
@@ -163,15 +163,15 @@ export class WebsiteService {
             'Content-Type': 'application/json', // afaik this one is not needed
             'Authorization': `${process.env.RICO_AUTH}`,
         };
-    
-        const url_member_dp =  web.auto_link + '/api/Support/memberDP/' + username.toLowerCase().trim() + '/Allday'
-     
+
+        const url_member_dp = web.auto_link + '/api/Support/memberDP/' + username.toLowerCase().trim() + '/Allday'
+
 
         try {
             this.logger.log(url_member_dp)
             this.logger.log('rico fired')
             const result = await this.httpService.get(url_member_dp, { headers: headersRequest }).toPromise();
-    
+
 
 
             this.logger.log('rico returned')
@@ -195,15 +195,15 @@ export class WebsiteService {
             'Content-Type': 'application/json', // afaik this one is not needed
             'Authorization': `${process.env.RICO_AUTH}`,
         };
-   
-        const url_member_dp =  web.auto_link + '/api/Support/memberDP/' + username.toLowerCase().trim()
-       
+
+        const url_member_dp = web.auto_link + '/api/Support/memberDP/' + username.toLowerCase().trim()
+
 
         try {
             this.logger.log(url_member_dp)
             this.logger.log('rico fired')
             const result = await this.httpService.get(url_member_dp, { headers: headersRequest }).toPromise();
-   
+
 
             this.logger.log('rico returned')
             return {
@@ -229,7 +229,7 @@ export class WebsiteService {
 
         const url_member_wd = web.auto_link + '/api/Support/memberWD/' + username.toLowerCase().trim()
 
-  
+
 
         try {
             this.logger.log(url_member_wd)
@@ -257,7 +257,7 @@ export class WebsiteService {
 
         }
     }
-  
+
     public async validateCheck(token: string): Promise<AxiosResponse | object> {
         const headersRequest = {
             'Content-Type': 'application/json', // afaik this one is not needed
@@ -368,7 +368,7 @@ export class WebsiteService {
 
 
         let url = `${website.auto_link}/api/Support/GetSumWithdrawReport/${from}/${to}/${member.username}`
-this.logger.log(url)
+        this.logger.log(url)
         try {
             const res = await this.httpService.get(url).toPromise()
             return res.data
@@ -380,5 +380,46 @@ this.logger.log(url)
     }
 
 
+    public async changePasswordRico(member: Members, new_password: string): Promise<AxiosResponse> {
+        const website = await this.getWebInfoByHash(member.hash)
 
+        if (!website) return
+        if (!website.auto_link) return
+
+        const data = {
+            old_password: member.password,
+            new_password: new_password
+        }
+        let url = `${website.auto_link}/api/Support/ChangePass/${member.username}`
+        this.logger.log(url)
+        try {
+            const res = await this.httpService.post(url, data).toPromise()
+            return res.data
+        } catch (error) {
+            console.log(error.response.data)
+        }
+
+
+    }
+    public async changeStatusRico(member: Members, status: boolean): Promise<AxiosResponse> {
+        const website = await this.getWebInfoByHash(member.hash)
+
+        if (!website) return
+        if (!website.auto_link) return
+
+        const data = {
+            username: member.username,
+            status: status
+        }
+        let url = `${website.auto_link}/api/Support/ChangeStatus`
+        this.logger.log(url)
+        try {
+            const res = await this.httpService.post(url, data).toPromise()
+            return res.data
+        } catch (error) {
+            console.log(error.response.data)
+        }
+
+
+    }
 }

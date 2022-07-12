@@ -105,7 +105,6 @@ export class Members {
     username:string;
 
     @Column({nullable:true})
-    @Expose()
     password:string;
 
 

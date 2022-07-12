@@ -47,31 +47,36 @@ export class MemberService {
         return await this.memberRepository.findOne({ where: { username: username } });
 
     }
-    public async searchMemberByUsername(pageOptionsDto:PageOptionsDto, company: string, agent: string , keyword:string) {
-    // public async searchMember(pageOptionsDto:PageOptionsDto, company: string, agent: string , keyword:string): Promise<PageDto<MemberAgentDto>> {
+    public async getMemberById(id: string): Promise<Members> {
 
-        const user =await this.memberRepository
-        .createQueryBuilder("m")
-        .where("m.company = :company", { company: company })
-        .where("m.agent = :agent", { agent: agent })
-        .andWhere("m.username like :keyword", { keyword: `%${keyword}%` })
-        .orderBy("m.created_at","DESC")
-        .take(pageOptionsDto.take)
-        .skip( pageOptionsDto.skip)
-        .getMany();
+        return await this.memberRepository.findOne(id);
+
+    }
+    public async searchMemberByUsername(pageOptionsDto: PageOptionsDto, company: string, agent: string, keyword: string) {
+        // public async searchMember(pageOptionsDto:PageOptionsDto, company: string, agent: string , keyword:string): Promise<PageDto<MemberAgentDto>> {
+
+        const user = await this.memberRepository
+            .createQueryBuilder("m")
+            .where("m.company = :company", { company: company })
+            .where("m.agent = :agent", { agent: agent })
+            .andWhere("m.username like :keyword", { keyword: `%${keyword}%` })
+            .orderBy("m.created_at", "DESC")
+            .take(pageOptionsDto.take)
+            .skip(pageOptionsDto.skip)
+            .getMany();
         const itemCount = user.length;
 
 
         const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
 
         return new PageDto(user, pageMetaDto);
-   
-       
-        }
 
-    
+
+    }
+
+
     public async getMemberPaginate(pageOptionsDto: PageOptionsDto, company: string, agent: string): Promise<PageDto<MemberAgentDto>> {
-
+        // public async getMemberPaginate(pageOptionsDto: PageOptionsDto, company: string, agent: string) {
 
         if (pageOptionsDto.start && pageOptionsDto.end) {
             const [result, total] = await this.memberRepository.findAndCount({
@@ -88,82 +93,87 @@ export class MemberService {
             return new PageDto(result, pageMetaDto);
 
         } else {
+            console.log("here")
+            const skip: number = (pageOptionsDto.page - 1) * pageOptionsDto.take
             const [result, total] = await this.memberRepository.findAndCount({
                 where: { agent: agent, company: company },
                 order: { created_at: 'DESC' },
-                skip: (pageOptionsDto.page - 1) * pageOptionsDto.take,
+                skip: skip,
                 take: pageOptionsDto.take
             })
             const itemCount = total;
 
 
-            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
 
-            return new PageDto(result, pageMetaDto);
+            console.log(a)
+            return a
         }
 
     }
     public async topupSmart(input: TopupSmartDto) {
-        if(!input.amount || input.amount <= 0 || !input.username ) throw new BadRequestException("invalid amount! or username!")
+        if (!input.amount || input.amount <= 0 || !input.username) throw new BadRequestException("invalid amount! or username!")
 
-       
-          if (input.method == 'deposit') {
-          
-              return await this.deposit(input.username, input.amount);
-         
-          } else if (input.method == 'withdraw') {
-     
-              return await this.withdraw(input.username, input.amount);
-         
-          }
+
+        if (input.method == 'deposit') {
+
+            return await this.deposit(input.username, input.amount);
+
+        } else if (input.method == 'withdraw') {
+
+            return await this.withdraw(input.username, input.amount);
+
+        }
     }
     public async deposit(username: string, amount: number): Promise<AxiosResponse | object> {
         const headersRequest = {
-          'Content-Type': 'application/json', // afaik this one is not needed
-          // 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImIxMjYxZmE3LTZmMTQtNDExMy1hMzY0LTU4MTA0MjkxYjkxNiIsInVuaXF1ZV9uYW1lIjoic3VwZXJhZG1pbiIsImlzX3N1cGVyYWRtaW4iOiJ0cnVlIiwibmJmIjoxNjM1ODAwMzU4LCJleHAiOjQ3OTE0NzM5NTgsImlhdCI6MTYzNTgwMDM1OH0.8hwif4RwiKgGriAepU1J6KMn5FogdFOBVebaJtKPMu4'
-          Authorization: `Bearer ${process.env.SMART_ADMIN_TOKEN}`,
+            'Content-Type': 'application/json', // afaik this one is not needed
+            // 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImIxMjYxZmE3LTZmMTQtNDExMy1hMzY0LTU4MTA0MjkxYjkxNiIsInVuaXF1ZV9uYW1lIjoic3VwZXJhZG1pbiIsImlzX3N1cGVyYWRtaW4iOiJ0cnVlIiwibmJmIjoxNjM1ODAwMzU4LCJleHAiOjQ3OTE0NzM5NTgsImlhdCI6MTYzNTgwMDM1OH0.8hwif4RwiKgGriAepU1J6KMn5FogdFOBVebaJtKPMu4'
+            Authorization: `Bearer ${process.env.SMART_ADMIN_TOKEN}`,
         };
-    
+
         // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
         if (amount == 0 || amount < 0) {
-          throw new BadRequestException('จำนวนเงินต้องมากกว่า 0');
+            throw new BadRequestException('จำนวนเงินต้องมากกว่า 0');
         }
         const url = process.env.SMART_URL + '/api/Credit/Deposit';
-    
-   console.log(url)
+
+        console.log(url)
         try {
-          const result = await this.httpService
-            .post(url, { username: username, amount: amount }, { headers: headersRequest })
-            .toPromise();
-          return result.data;
+            const result = await this.httpService
+                .post(url, { username: username, amount: amount }, { headers: headersRequest })
+                .toPromise();
+            return result.data;
         } catch (error) {
-          console.log(error.response.data);
-          throw new BadRequestException(error.response.data);
+            console.log(error.response.data);
+            throw new BadRequestException(error.response.data);
         }
-      }
-      public async withdraw(username: string, amount: number): Promise<AxiosResponse | object> {
+    }
+    public async withdraw(username: string, amount: number): Promise<AxiosResponse | object> {
         const headersRequest = {
-          'Content-Type': 'application/json', // afaik this one is not needed
-          // 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImIxMjYxZmE3LTZmMTQtNDExMy1hMzY0LTU4MTA0MjkxYjkxNiIsInVuaXF1ZV9uYW1lIjoic3VwZXJhZG1pbiIsImlzX3N1cGVyYWRtaW4iOiJ0cnVlIiwibmJmIjoxNjM1ODAwMzU4LCJleHAiOjQ3OTE0NzM5NTgsImlhdCI6MTYzNTgwMDM1OH0.8hwif4RwiKgGriAepU1J6KMn5FogdFOBVebaJtKPMu4'
-          Authorization: `Bearer ${process.env.SMART_ADMIN_TOKEN}`,
+            'Content-Type': 'application/json', // afaik this one is not needed
+            // 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImIxMjYxZmE3LTZmMTQtNDExMy1hMzY0LTU4MTA0MjkxYjkxNiIsInVuaXF1ZV9uYW1lIjoic3VwZXJhZG1pbiIsImlzX3N1cGVyYWRtaW4iOiJ0cnVlIiwibmJmIjoxNjM1ODAwMzU4LCJleHAiOjQ3OTE0NzM5NTgsImlhdCI6MTYzNTgwMDM1OH0.8hwif4RwiKgGriAepU1J6KMn5FogdFOBVebaJtKPMu4'
+            Authorization: `Bearer ${process.env.SMART_ADMIN_TOKEN}`,
         };
-    
+
         // return await this.httpService.get(url, { headers: headersRequest }).toPromise();
         if (amount == 0 || amount < 0) {
-          throw new BadRequestException('จำนวนเงินต้องมากกว่า 0');
+            throw new BadRequestException('จำนวนเงินต้องมากกว่า 0');
         }
         const url = process.env.SMART_URL + '/api/Credit/Withdraw';
-     
+
         try {
-          const result = await this.httpService
-            .post(url, { username: username, amount: amount }, { headers: headersRequest })
-            .toPromise();
-          return result.data;
+            const result = await this.httpService
+                .post(url, { username: username, amount: amount }, { headers: headersRequest })
+                .toPromise();
+            return result.data;
         } catch (error) {
-          console.log(error.response.message);
-          throw new UnauthorizedException();
+            console.log(error.response.message);
+            throw new UnauthorizedException();
         }
-      }
+    }
     public async createMember(input: CreateMemberDto) {
 
 
@@ -175,6 +185,14 @@ export class MemberService {
 
 
         const members = await this.memberRepository.save({ ...member, ...input })
+        this.logger.log('member saved');
+
+        return members
+    }
+    public async saveMemberEntity(member: Members) {
+
+
+        const members = await this.memberRepository.save(member)
         this.logger.log('member saved');
 
         return members
@@ -199,6 +217,31 @@ export class MemberService {
 
             )
             .execute();
+
+    }
+
+
+
+    public async changePasswordSmart(member: Members, mew_password: string): Promise<AxiosResponse | object> {
+        const headersRequest = {
+            'Content-Type': 'application/json', // afaik this one is not needed
+            'Authorization': `${process.env.SMART_OLD_ADMIN_TOKEN}`,
+        };
+
+        const data = {
+            old_password: member.password,
+            new_password: mew_password
+        }
+        const url = `${process.env.SMART_URL_OLD}/api/v1/member/${member.member_uuid}/reset-password`
+        try {
+            const res = await this.httpService.post(url, data, { headers: headersRequest }).toPromise()
+            return res.data
+
+
+        } catch (error) {
+            throw new BadRequestException(error.response.data)
+        }
+
 
     }
     public async generateAffid(member: Members, web: Website) {
@@ -245,49 +288,13 @@ export class MemberService {
             return member
         }
 
-        //do register aff null parent
 
-        //     const aff_member = `${process.env.AFF_MEMBER}/api/Aff/RegisterNullParent`
-        //     const data = {
-        //         username: member.username,
-        //         company: member.company,
-        //         agent: member.agent,
-        //         child_config_id: setting_id.id,
-        //         aff_link: process.env.AFF_LINK,
-        //         aff_register_link: process.env.AFF_REGISTER_LINK,
-        //         member_link: `https://member.${web.website}`,
-        //         hash: member.hash
-        //     }
-        //     this.logger.log('registering aff member ');
-        //     try {
-        //         let res = await this.httpService.post(aff_member, data).toPromise()
-        //         console.log(res.data)
-        //         member.aff_id = res.data.id
-        //         this.logger.log('registering aff member ok');
-        //         await this.memberRepository.save(member)
-        //         this.logger.log('member saved');
-        //         return member
-        //     } catch (error) {
-        //         this.logger.log('registering aff member error');
-        //         console.log(error.response.data)
-        //     }
-
-        //         // register aff_setting
-        //         try {
-        //             const register_setting_url =  `${process.env.AFF_SETTING}/api/Aff/Member`
-        // const setting_data = new CreateAffMemberSettingDto()
-        // setting_data.aff_id = res.data.id
-        //             await this.httpService.post(register_setting_url,)
-        //         } catch (error) {
-
-        //         }
-        //     return member
     }
 
     public async getCreditByDisplayname(member: Members): Promise<AxiosResponse | object> {
         const headersRequest = {
             'Content-Type': 'application/json', // afaik this one is not needed
-            'Authorization': `Bearer ${process.env.SMART_OLD_ADMIN_TOKEN}`,
+            'Authorization': `${process.env.SMART_OLD_ADMIN_TOKEN}`,
         };
         const url = `${process.env.SMART_URL_OLD}/api/v1/member/${member.member_uuid}`
         // const url =`https://agent-service-backend-kdz5uqbpia-as.a.run.app/api/v1/member/6d0fca9f932e4fe1857e13849ca2182c`
