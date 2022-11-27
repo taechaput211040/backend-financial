@@ -179,7 +179,25 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
         return await this.memberService.getCreditByDisplayname( member)
 
     }
-    
+    @Get('/Verify/:company/:agent/:fromBankRef')
+    async verufy(
+        @Param('company') company: string,
+        @Param('agent') agent: string,
+        @Param('fromBankRef') fromBankRef: string
+
+    ) {
+        this.logger.log('verufy  hit');
+        // const value = await this.cacheManager.get('_member_' + displayname.toLocaleLowerCase());
+
+        // if (value) return value
+
+        const member = await this.memberService.verifyMember(company.toLowerCase(),agent.toLowerCase(),fromBankRef)
+        if (member.length == 0) throw new NotFoundException()
+        return member
+
+
+
+    }
     @Post('/Realusername')
     @UsePipes(new ValidationPipe({ transform: true }))
     async Realusername(

@@ -56,6 +56,7 @@ export class Members {
 
     @Column({nullable:true})
     @Expose()
+    @Index()
     bankAccRef:string;
 
 
@@ -165,10 +166,12 @@ export class Members {
 
     @Column({nullable:true})
     @Expose()
+    @Index()
     agent:string;
 
     @Column({nullable:true})
     @Expose()
+    @Index()
     company:string;
 
 

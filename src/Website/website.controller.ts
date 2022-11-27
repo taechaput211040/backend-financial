@@ -27,6 +27,7 @@ export class WebsiteController {
     }
 
     @Get('/Rico/Turn')
+    
     @UseInterceptors(ClassSerializerInterceptor)
     async getMemberTurn(
         @Query('username') username,

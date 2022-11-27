@@ -47,6 +47,14 @@ export class MemberService {
         return await this.memberRepository.findOne({ where: { username: username } });
 
     }
+    public async verifyMember(company: string,agent: string,fromBankRef: string ): Promise<Members[]> {
+
+
+
+        return await this.memberRepository.find({ where: { company: company, agent:agent,bankAccRef:fromBankRef } });
+
+    }
+    
     public async getMemberById(id: string): Promise<Members> {
 
         return await this.memberRepository.findOne(id);
