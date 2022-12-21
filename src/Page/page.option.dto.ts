@@ -39,6 +39,8 @@ export class PageOptionsDto {
   @IsString()
   @IsOptional()
   readonly start?: string = new Date().toLocaleDateString('en-GB');
+
+  
   @IsString()
   @IsOptional()
   readonly end?: string = new Date().toLocaleDateString('en-GB');

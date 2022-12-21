@@ -178,6 +178,15 @@ export class Members {
     @Column({nullable:true})
     @Expose()
     ip:string;
+
+    @Column({nullable:true,default:false})
+    @Expose()
+    sync:boolean;
+
+    
+    @Column({nullable:true})
+    @Expose()
+    bonusid_v2 :string
     // @ManyToOne(() => Section, (section) => section.id, {
     //     nullable: true,
     //     onDelete:'CASCADE'

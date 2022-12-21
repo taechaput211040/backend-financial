@@ -3,6 +3,7 @@ import { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import * as fs from "fs"
 import { DepositNotify } from "src/Entity/deposit.notify.entity";
 import { MemberConfig } from "src/Entity/member.config.entiry";
+import { MemberTurn } from "src/Entity/member.turn.entiry";
 import { Notify } from "src/Entity/notify.entity";
 import { ProviderBO } from "src/Entity/provider.bo.entity";
 import { RegisterNotify } from "src/Entity/register.notify.entity";
@@ -27,7 +28,7 @@ export default registerAs('orm.config',():TypeOrmModuleOptions=>(  {
     username: process.env.DB_USER, 
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    entities:[Members,MemberConfig], 
+    entities:[Members,MemberConfig,MemberTurn], 
     synchronize:false,
     // debug: true    :: for debug mysql
     ssl: {

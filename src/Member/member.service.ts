@@ -1,4 +1,4 @@
-import { BadRequestException, HttpService, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, CACHE_MANAGER, HttpService, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DepositNotify } from 'src/Entity/deposit.notify.entity';
@@ -25,6 +25,16 @@ import { MemberAgentDto } from 'src/Input/member.agent.dto';
 import { PageMetaDto } from 'src/Page/page-meta.dto';
 import { CreateMemberAgentDto } from 'src/Input/create.member.agent.dto';
 import { TopupSmartDto } from 'src/Input/topup.smart.dto';
+import { Setting } from 'src/Setting/setting.entity';
+import { CreditV1Dto } from 'src/Input/credit.v1.dto';
+import { CreditV2Dto } from 'src/Input/credit.v2.dto';
+import { MemberTurnService } from './member.turn.service';
+import { CutCreditDto } from 'src/Input/cut.credit.dto';
+import { HttpException } from '@nestjs/common/exceptions';
+
+import { Cache } from "cache-manager";
+import { plainToClass } from 'class-transformer';
+import { ChangePasswordFrontendDto } from 'src/Input/change.password.frontend.dto';
 const qs = require('querystring');
 @Injectable()
 export class MemberService {
@@ -33,9 +43,11 @@ export class MemberService {
         @InjectRepository(Members)
         private readonly memberRepository: Repository<Members>,
 
-
+        @Inject(CACHE_MANAGER) private cacheManager: Cache,
         private httpService: HttpService,
         private readonly configService: ConfigService,
+
+
 
     ) {
 
@@ -44,17 +56,28 @@ export class MemberService {
 
     public async getMember(username: string): Promise<Members> {
 
-        return await this.memberRepository.findOne({ where: { username: username } });
+        // return await this.memberRepository.findOne({ where: { username: username } });
+
+        const cacheName = `_memberRepo_${username.toLowerCase()}`
+
+        const value = await this.cacheManager.get(cacheName)
+        if (value) return plainToClass(Members, value)
+        console.log('get _memberRepo_ :', username)
+        const member = await this.memberRepository.findOne({ where: { username: username } });
+
+        await this.cacheManager.set(cacheName, member, { ttl: null })
+
+        return member
 
     }
-    public async verifyMember(company: string,agent: string,fromBankRef: string ): Promise<Members[]> {
+    public async verifyMember(company: string, agent: string, fromBankRef: string): Promise<Members[]> {
 
 
 
-        return await this.memberRepository.find({ where: { company: company, agent:agent,bankAccRef:fromBankRef } });
+        return await this.memberRepository.find({ where: { company: company, agent: agent, bankAccRef: fromBankRef } });
 
     }
-    
+
     public async getMemberById(id: string): Promise<Members> {
 
         return await this.memberRepository.findOne(id);
@@ -197,6 +220,14 @@ export class MemberService {
 
         return members
     }
+    public async updateMemberPassword(member: Members, input: ChangePasswordFrontendDto) {
+
+        member.password = input.newpass
+        const members = await this.memberRepository.save(member)
+        this.logger.log('member saved');
+
+        return members
+    }
     public async saveMemberEntity(member: Members) {
 
 
@@ -228,7 +259,18 @@ export class MemberService {
 
     }
 
+    public async cutCreditAffiliate(member: Members, amount: number) {
+        const url_all_deposit = `${process.env.ALL_DEPOSIT}/api/Aff/Report/CheckV2`
+        const body = { username: member.username, amount: amount }
+        try {
+            const res = await this.httpService.post(url_all_deposit, body).toPromise()
+            return res.data
+        } catch (error) {
+            console.log('affiliate check error: ', member.username)
+            throw new HttpException(error.response.data, error.response.status)
+        }
 
+    }
 
     public async changePasswordSmart(member: Members, mew_password: string): Promise<AxiosResponse | object> {
         const headersRequest = {
@@ -299,7 +341,7 @@ export class MemberService {
 
     }
 
-    public async getCreditByDisplayname(member: Members): Promise<AxiosResponse | object> {
+    public async getCreditByDisplayname(member: Members): Promise<CreditV1Dto> {
         const headersRequest = {
             'Content-Type': 'application/json', // afaik this one is not needed
             'Authorization': `${process.env.SMART_OLD_ADMIN_TOKEN}`,
@@ -315,9 +357,142 @@ export class MemberService {
             throw new BadRequestException(error.response.data)
         }
     }
+    public async getCreditByDisplaynameV2(member: Members, setting: Setting): Promise<CreditV2Dto> {
+        const headersRequest = {
+            'Content-Type': 'application/json', // afaik this one is not needed
+            'apikey': `${setting.token}`,
+        };
+        const url = `${process.env.SMART_V2}/v1alpha/permanant/credit-tranfer/balance/${member.username.toLowerCase()}`
+        // const url =`https://agent-service-backend-kdz5uqbpia-as.a.run.app/api/v1/member/6d0fca9f932e4fe1857e13849ca2182c`
+        try {
+            const res = await this.httpService.get(url, { headers: headersRequest }).toPromise()
+            return res.data
 
+
+        } catch (error) {
+            console.log(error.response.data)
+            throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
+        }
+    }
+    public async adjustCreditToV2(creditv1: number, creditv2: number, member: Members, setting: Setting) {
+
+
+        //v1-v2 = x
+        //v2 = x+v2
+
+        const div_credit = creditv1 - creditv2
+
+
+        const sync_credit = await this.topupV2(div_credit, member, setting)
+        return sync_credit.amount
+    }
+
+    private async topupV2(credit: number, member: Members, setting: Setting) {
+        const headersRequest = {
+            'Content-Type': 'application/json', // afaik this one is not needed
+            'apikey': `${setting.token}`,
+        };
+        const url = `${process.env.SMART_V2}/v1alpha/permanant/credit-tranfer/deposit/`
+
+        const body = {
+            username: member.username,
+            amount: credit
+        }
+        try {
+            const res = await this.httpService.post(url, body, { headers: headersRequest }).toPromise()
+
+            console.log("topup:", res.data)
+            return res.data
+
+
+        } catch (error) {
+            console.log(error.response.data)
+            throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
+        }
+    }
+
+
+    public async cutCreditV2(credit: number, member: Members, setting: Setting) {
+        const headersRequest = {
+            'Content-Type': 'application/json', // afaik this one is not needed
+            'apikey': `${setting.token}`,
+        };
+        const url = `${process.env.SMART_V2}/v1alpha/permanant/credit-tranfer/withdraw/`
+
+        const body = {
+            username: member.username,
+            amount: credit
+        }
+        try {
+
+            const res = await this.httpService.post(url, body, { headers: headersRequest }).toPromise()
+
+            console.log("withdrawV2:", res.data)
+            return res.data
+
+
+        } catch (error) {
+            console.log(error.response.data)
+            throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
+        }
+    }
+    public async sendWithdrawList(credit_result: CutCreditDto, member: Members) {
+
+        const url = `${process.env.ALL_WITHDRAW}/api/Withdraw/Member`
+
+        const body = {
+            member: member,
+            result: credit_result
+        }
+        try {
+            console.log('sending withdrawlist', member.username)
+
+            const res = await this.httpService.post(url, body).toPromise()
+
+            //    console.log("withdrawV2:",res.data)
+            member.wd_count++
+            await this.saveMemberEntity(member)
+
+            return res.data
+
+
+        } catch (error) {
+            console.log(error.response.data)
+            throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
+        }
+    }
+
+    private async withdrawV2(credit: number, member: Members, setting: Setting) {
+        const headersRequest = {
+            'Content-Type': 'application/json', // afaik this one is not needed
+            'apikey': `${setting.token}`,
+        };
+        const url = `${process.env.SMART_V2}/v1alpha/permanant/credit-tranfer/withdraw/`
+
+        const body = {
+            username: member.username,
+            amount: credit
+        }
+        try {
+            const res = await this.httpService.post(url, body, { headers: headersRequest }).toPromise()
+
+            console.log("withdrawV2:", res.data)
+            return res.data
+
+
+        } catch (error) {
+            throw new BadRequestException(error.response.data)
+        }
+    }
     public async saveRealUsername(username: string, provider: string) {
 
+    }
+
+    public async updateSyncedMember(member: Members) {
+
+
+        member.sync = true
+        await this.memberRepository.save(member)
     }
 }
 

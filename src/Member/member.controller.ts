@@ -16,6 +16,9 @@ import { AuthGuardJwt } from 'src/auth/autn-guard.jwt';
 import { AuthGuard } from '@nestjs/passport';
 import { JwtStrategy } from 'src/auth/jwt.strategy';
 import { MemberConfigService } from './member.config.service';
+import { MemberTurnService } from './member.turn.service';
+import { ChangePasswordDto } from 'src/Input/change.password.dto';
+import { ChangePasswordFrontendDto } from 'src/Input/change.password.frontend.dto';
 @Controller('api/Member')
 @SerializeOptions({ strategy: 'excludeAll' })
 export class MemberController {
@@ -23,6 +26,7 @@ export class MemberController {
     constructor(
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
         private readonly memberService: MemberService,
+        private readonly memberTurnService: MemberTurnService,
         private readonly websiteService: WebsiteService,
         private readonly memberConfigService: MemberConfigService
 
@@ -46,9 +50,10 @@ export class MemberController {
         @Param('displayname') username: string
     ) {
         const value = await this.cacheManager.get('_member_info_' + username.toLocaleLowerCase());
-
-        if (value) return plainToClass(Members, value)
+console.log('by dispaly hit')
+        // if (value) return plainToClass(Members, value)
         let member = await this.memberService.getMember(username.toLocaleLowerCase())
+        console.log(member)
         if (!member) throw new NotFoundException()
 
         if (!member.aff_id) {
@@ -245,7 +250,7 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
         this.logger.log('creating');
         return await this.memberService.saveOrUpdateManyMember(input)
     }
-
+    
     @Put()
     @UsePipes(new ValidationPipe({ transform: true }))
     async updateMember(
@@ -260,12 +265,31 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
         if (!member) throw new NotFoundException()
 
         const result = await this.memberService.updateMember(member, input)
+ 
+        await this.cacheManager.del(`_memberRepo_${input.username.toLowerCase()}`)
         await this.cacheManager.del('_member_info_' + input.username.toLocaleLowerCase())
         await this.cacheManager.del('_member_' + input.username.toLocaleLowerCase())
         await this.cacheManager.del('_member_' + this.generateSeamlessUsername(member))
         return result
     }
+    @Put('/Password')
+    @UsePipes(new ValidationPipe({ transform: true }))
+    async updatePassword(
+        @Body() input: ChangePasswordFrontendDto
+    ) {
 
+        this.logger.log('updateMember hit');
+
+
+
+        const member = await this.memberService.getMember(input.username.toLocaleLowerCase())
+        if (!member) throw new NotFoundException()
+
+        const result = await this.memberService.updateMemberPassword(member, input)
+ 
+       
+        return  {status:true,message:"บันทึกสำเร็จ"}
+    }
     @Delete('/:hash')
     async deleteNotifySetting(
         @Param('hash') hash: string,

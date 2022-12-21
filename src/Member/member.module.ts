@@ -16,9 +16,14 @@ import { AuthModule } from 'src/auth/auth.module';
 import { MemberConfigService } from './member.config.service';
 import { MemberConfig } from 'src/Entity/member.config.entiry';
 import { MemberAgentController } from './member.agent.controller';
+import { MemberTurn } from 'src/Entity/member.turn.entiry';
+import { MemberTurnService } from './member.turn.service';
+import { MemberTurnController } from './member.turn.controller';
+import { LockDown } from 'src/Entity/rico.lockdown.entity';
 @Module({
-    imports: [TypeOrmModule.forFeature([Members,MemberConfig]), 
+    imports: [TypeOrmModule.forFeature([Members,MemberConfig,MemberTurn]), 
     TypeOrmModule.forFeature([Website],'support'), 
+    TypeOrmModule.forFeature([LockDown],'rico'), 
     CacheModule.register({ 
         store: redisStore,
         host: process.env.REDIS_SERVER,
@@ -31,7 +36,7 @@ import { MemberAgentController } from './member.agent.controller';
         HttpModule,
         SwaggerModule
       ], 
-    controllers: [MemberController,MemberAgentController],
-    providers: [MemberService,WebsiteService,MemberConfigService],
+    controllers: [MemberController,MemberAgentController,MemberTurnController],
+    providers: [MemberService,WebsiteService,MemberConfigService,MemberTurnService],
 })
 export class MemberModule {};

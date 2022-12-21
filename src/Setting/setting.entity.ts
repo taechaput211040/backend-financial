@@ -115,5 +115,9 @@ export class Setting {
     @Column({ nullable: true ,default:true})
     @Expose()
     system_status:boolean;
+
+    @Column({ nullable: true })
+    @Expose()
+    mysql_db_name :string;
     //findone find many load realtion  put option , {relations:['children']}
 }

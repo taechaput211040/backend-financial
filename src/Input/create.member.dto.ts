@@ -14,9 +14,11 @@ export class CreateMemberDto {
 
    
     @IsString()
+    @IsOptional()
     name: string;
 
     @IsString()
+    @IsOptional()
     lastname: string;
 
     @IsString()
@@ -30,6 +32,7 @@ export class CreateMemberDto {
 
   
     @IsString()
+    @IsOptional()
     phone: string;
     @IsString()
     @IsOptional()
@@ -41,7 +44,7 @@ export class CreateMemberDto {
     @IsString()
     username: string;
 
-  
+    @IsOptional()
     @IsString()
     password: string;
 
@@ -150,5 +153,11 @@ export class CreateMemberDto {
     @IsOptional()
     @IsString()
     group: string;
+    @IsOptional()
+    @IsBoolean()
+    sync:boolean;
 
+    @IsOptional()
+    @IsString()
+    bonusid_v2 :string
 } 
