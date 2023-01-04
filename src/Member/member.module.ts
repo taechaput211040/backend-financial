@@ -20,6 +20,8 @@ import { MemberTurn } from 'src/Entity/member.turn.entiry';
 import { MemberTurnService } from './member.turn.service';
 import { MemberTurnController } from './member.turn.controller';
 import { LockDown } from 'src/Entity/rico.lockdown.entity';
+import { AuthService } from 'src/auth/auth.service';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 @Module({
     imports: [TypeOrmModule.forFeature([Members,MemberConfig,MemberTurn]), 
     TypeOrmModule.forFeature([Website],'support'), 
@@ -33,10 +35,19 @@ import { LockDown } from 'src/Entity/rico.lockdown.entity';
         db: 7
     
       }),
+      JwtModule.registerAsync({
+        useFactory: () => ({
+            secret: process.env.AUTH_SECRET,
+            signOptions: {
+                expiresIn: '1h'
+            }
+        })
+    }),
         HttpModule,
-        SwaggerModule
+        SwaggerModule,
+        AuthModule
       ], 
     controllers: [MemberController,MemberAgentController,MemberTurnController],
-    providers: [MemberService,WebsiteService,MemberConfigService,MemberTurnService],
+    providers: [MemberService,WebsiteService,MemberConfigService,MemberTurnService,AuthService],
 })
 export class MemberModule {};

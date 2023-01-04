@@ -1,105 +1,70 @@
-import { BadRequestException, HttpService, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, HttpService, NotFoundException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { InjectRepository } from "@nestjs/typeorm";
+import { CreateMemberDto } from "src/Input/create.member.dto";
+import { LoginDto } from "src/Input/login.dto";
+import { Members } from "src/Member/member.entiry";
+import { WebsiteService } from "src/Website/website.service";
+import { Repository } from "typeorm";
+// import { User } from "src/User/user.entity";
 
 @Injectable()
 export class AuthService {
 
   constructor(
-  
-    private readonly jwtservice: JwtService
+    @InjectRepository(Members)
+    private readonly memberRepository: Repository<Members>,
+    private readonly jwtservice: JwtService,
+    private httpService: HttpService,
+
+    private websiteService: WebsiteService
   ) { }
 
-  public async superAdminKey(): Promise<string> {
+  public getTokenForUser(user: CreateMemberDto): string {
     return this.jwtservice.sign({
-      role: 'superadmin'
+      // role: user.role,
+      // ag:user.agent,
+      // sa:user.s_admin,
+      // st:user.status,
+      // ltp:user.limittopup,
+      // cpd:user.creditperday,
+      usn: user.username
+
     });
+  }
 
+  public async updateTokenMember(token:string,member:Members,ip:string){
+    member.member_token = token
+    member.ip = ip
+await this.memberRepository.save(member)
+  }
+  public async validateMember(input: LoginDto) {
+    const web = await this.websiteService.getWebInfoByMemberLink(input.origin)
+    if (!web) throw new UnauthorizedException('unauthorized')
+    if (!web.status) throw new UnauthorizedException('เว็บไซต์ปิดปรับปรุง')
 
+    const member = await this.getMemberByUsername(input.username)
+    if (!member) throw new NotFoundException('ไม่พบข้อมูลในระบบ กรุณาตรวจสอบ username password')
+    if (member.agent != web.agent_prefix.toLowerCase()) throw new UnauthorizedException('unauthorized')
+    if (member.password != input.password) throw new BadRequestException('ท่านกรอกข้อมูลไม่ถูกต้อง')
+    if (!member.status) throw new UnauthorizedException('คุณถูกระงับการใช้งาน')
+return member
+  }
+  public async getMemberByUsername(username: string): Promise<Members> {
+    return await this.memberRepository.findOne({
+      where: { username: username.toLowerCase() }
+
+    });
+  }
+  public async getHash(user: CreateMemberDto) {
+    const url = `${process.env.ALL_SETTING}/api/Setting/Main/${user.company}/${user.agent}`
+    try {
+      const setting = await this.httpService.get(url).toPromise()
+      return setting.data
+    } catch (error) {
+      return null
+    }
 
   }
-  // public async getTokenForUser(body: User): Promise<string> {
-  //   return this.jwtservice.sign({
-  //     role: body.role,
-  //     username: body.username,
-  //     status: body.status,
-  //     name: body.name,
-  //     staff_id: body.staff_id
-
-  //   });
-
-
-
-  // }
-  // public async getTokenForMember(body: User): Promise<string> {
-  //   return this.jwtservice.sign({
-  //     role: body.role,
-  //     username: body.username,
-  //     status: body.status,
-  //     name: body.name,
-  //     staff_id: body.staff_id
-
-  //   });
-
-
-
-  // }
-  // public async validateAuth(body: LoginDto): Promise<any> {
-
-  //   const auth = await this.userRepository.findOne({ username: body.username });
-  //   if (auth) {
-  //     if (auth.password == body.password) {
-  //       if (auth.status == true) {
-  //         return {key:await this.getTokenForUser(auth
- 
-  //         ),
-  //         username:auth.username
-  //       };
-  //       }
-  //     } 
-  //   }
-
-  //   throw new UnauthorizedException();
-  // }
-  // public async createUser(body: UserDto): Promise<User> {
-
-  //   const us = new User();
-  //   const user_count = await this.userRepository.createQueryBuilder("u")
-  //     .where('u.status = true')
-  //     .getCount();
-  //   body.username = body.username.toLowerCase()
-  //   console.log(user_count)
-  //   // throw new UnauthorizedException();
-  //   if (user_count < 9) {
-  //     us.staff_id = 'CS0' + (user_count + 1)
-  //   } else {
-  //     us.staff_id = 'CS' + (user_count + 1)
-  //   }
-  //   try {
-  //     return await this.userRepository.save({ ...us, ...body });
-  //   } catch (error) {
-  //     throw new BadRequestException(error.detail);
-  //   }
-
-
-
-
-  // }
-//   public async loginRico(body: LoginDto,hash:string): Promise<any> {
-// // const hash = "4fe56b880271a98c20495111f7b70e9b"
-// const web = await this.gatewayService.getWebInfoByHash(hash)
-
-// const url = 'https://rico.'+web.website+'/api/Login/Auth';
-       
-//     // const url = process.env.RICO_URL + '/api/Login/Auth';
-//     console.log(url)
-//     try {
-//       const result = await this.httpService.post(url,body).toPromise();
-//       return result.data
-//     } catch (error) {
-//       throw new BadRequestException( error.response.data.message)
-//     }
-   
-   
-//   }
 
 }

@@ -19,6 +19,10 @@ import { MemberConfigService } from './member.config.service';
 import { MemberTurnService } from './member.turn.service';
 import { ChangePasswordDto } from 'src/Input/change.password.dto';
 import { ChangePasswordFrontendDto } from 'src/Input/change.password.frontend.dto';
+import { SettingDto } from 'src/Input/setting.dto';
+import { Setting } from 'src/Setting/setting.entity';
+import { AuthService } from 'src/auth/auth.service';
+import { JwtService } from '@nestjs/jwt';
 @Controller('api/Member')
 @SerializeOptions({ strategy: 'excludeAll' })
 export class MemberController {
@@ -28,10 +32,12 @@ export class MemberController {
         private readonly memberService: MemberService,
         private readonly memberTurnService: MemberTurnService,
         private readonly websiteService: WebsiteService,
-        private readonly memberConfigService: MemberConfigService
+        private readonly memberConfigService: MemberConfigService,
+        private readonly authService: AuthService,
+        private readonly jwtService: JwtService,
 
     ) { }
- 
+
     @Get('/testauth')
     @UseGuards(AuthGuard('jwt'))
     async testauth(
@@ -50,10 +56,10 @@ export class MemberController {
         @Param('displayname') username: string
     ) {
         const value = await this.cacheManager.get('_member_info_' + username.toLocaleLowerCase());
-console.log('by dispaly hit')
+        console.log('by dispaly hit')
         // if (value) return plainToClass(Members, value)
         let member = await this.memberService.getMember(username.toLocaleLowerCase())
-        console.log(member)
+
         if (!member) throw new NotFoundException()
 
         if (!member.aff_id) {
@@ -61,6 +67,7 @@ console.log('by dispaly hit')
             const web = await this.websiteService.getWebInfoByHashAllData(member.hash)
             member = await this.memberService.generateAffid(member, web);
         }
+        if (!member.sync) await this.memberTurnService.syncMember(member)
         await this.cacheManager.set('_member_info_' + username.toLocaleLowerCase(), member, { ttl: null });
         return member
     }
@@ -73,10 +80,10 @@ console.log('by dispaly hit')
         const value = await this.cacheManager.get('_member_' + username.toLocaleLowerCase());
 
         if (value) return value
-const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase())
+        const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase())
         const member = await this.memberService.getMember(this.decodeSeamlessUsername(username.toLocaleLowerCase()))
         if (!member) {
-       
+
             throw new NotFoundException()
         }
 
@@ -127,12 +134,12 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
     ) {
 
         this.logger.log('ByProviderUsername  hit');
-        const value = await this.cacheManager.get('_provider_username_' + providerUsername.toLocaleLowerCase()+'_'+provider);
+        const value = await this.cacheManager.get('_provider_username_' + providerUsername.toLocaleLowerCase() + '_' + provider);
 
         if (value) return value
-        const member_config = await this.memberConfigService.getUsernameByProviderUsername(providerUsername,provider.toUpperCase())
+        const member_config = await this.memberConfigService.getUsernameByProviderUsername(providerUsername, provider.toUpperCase())
         if (!member_config) {
-       
+
             throw new NotFoundException()
         }
         const member = await this.memberService.getMember(member_config.username.toLocaleLowerCase())
@@ -144,10 +151,10 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
 
         }
 
-       
-     
-       
-        await this.cacheManager.set('_provider_username_' + providerUsername.toLocaleLowerCase()+'_'+provider, cache_data, { ttl: null });
+
+
+
+        await this.cacheManager.set('_provider_username_' + providerUsername.toLocaleLowerCase() + '_' + provider, cache_data, { ttl: null });
 
         return cache_data
     }
@@ -181,7 +188,7 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
         const member = await this.memberService.getMember(displayname.toLocaleLowerCase())
         if (!member) throw new NotFoundException()
 
-        return await this.memberService.getCreditByDisplayname( member)
+        return await this.memberService.getCreditByDisplayname(member)
 
     }
     @Get('/Verify/:company/:agent/:fromBankRef')
@@ -196,7 +203,7 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
 
         // if (value) return value
 
-        const member = await this.memberService.verifyMember(company.toLowerCase(),agent.toLowerCase(),fromBankRef)
+        const member = await this.memberService.verifyMember(company.toLowerCase(), agent.toLowerCase(), fromBankRef)
         if (member.length == 0) throw new NotFoundException()
         return member
 
@@ -209,15 +216,15 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
         @Body() input: any
     ) {
         this.logger.log('Realusername  hit');
-        const cacheName = '_realusername_'+input.username.toUpperCase() + '_'+input.provider
-        const value =  await this.cacheManager.get(cacheName)
-       if(value) return
+        const cacheName = '_realusername_' + input.username.toUpperCase() + '_' + input.provider
+        const value = await this.cacheManager.get(cacheName)
+        if (value) return
         this.logger.log(input);
-        const member_config =await this.memberConfigService.getByUsername(input.username.toLowerCase(),input.provider.toUpperCase())
-        if(member_config) return
-        await this.memberConfigService.saveRealUsername(input.username,input.provider,input.opcode)
-        
-        await this.cacheManager.set('_realusername_'+input.username.toUpperCase() + '_'+input.provider, '1', { ttl: null });
+        const member_config = await this.memberConfigService.getByUsername(input.username.toLowerCase(), input.provider.toUpperCase())
+        if (member_config) return
+        await this.memberConfigService.saveRealUsername(input.username, input.provider, input.opcode)
+
+        await this.cacheManager.set('_realusername_' + input.username.toUpperCase() + '_' + input.provider, '1', { ttl: null });
     }
     @Post('/Migrate')
     @UsePipes(new ValidationPipe({ transform: true }))
@@ -233,6 +240,48 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
         //   return members
         await this.memberService.saveOrUpdateManyMember(members)
     }
+    @Post('/Frontend/:hash')
+    @UsePipes(new ValidationPipe({ transform: true }))
+    async createMemberFrontend(
+        @Param('hash') hash: string,
+        @Body() input: CreateMemberDto
+    ) {
+        this.logger.log('createMemberFrontend hit');
+     
+
+        const setting: Setting = await this.memberService.getSettingByhash(hash)
+        if (!setting) throw new BadRequestException('ไม่พบข้อมูลเว็บ')
+        input.agent = setting.agent_username.toLowerCase()
+        input.company = setting.company.toLowerCase()
+        this.logger.log('validating');
+        await this.memberService.validateMemberData(input)
+        this.logger.log('creating');
+        const member = await this.memberService.generateMember(input, setting)
+
+        await this.memberTurnService.createTurnV2(member, setting, 0)
+        const username = member.username
+        const agent = member.agent
+        const company = member.company
+        const accessToken = await this.jwtService.signAsync({
+            username
+            , agent,
+            company
+        })
+
+        const ssid = Math.floor(Math.random() * 100000) + 100001
+        await this.cacheManager.set('_SSID_' + input.username.toUpperCase(), ssid, { ttl: 3600 });
+        await this.authService.updateTokenMember(accessToken, member, member.ip)
+
+        return {
+            data: { username: member.username.toUpperCase(), password: member.password },
+            member: member,
+            username: member.username.toUpperCase(),
+            accessTokenMember: accessToken,
+            id: member.id,
+            randomkey: ssid
+        }
+   
+    }
     @Post()
     @UsePipes(new ValidationPipe({ transform: true }))
     async createMember(
@@ -245,12 +294,11 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
 
         // const member = await this.memberService.getMember(input.username.toLocaleLowerCase())
         // // if (member) throw new BadRequestException("Duplicate Username")
-        input.username = input.username.toLocaleLowerCase() 
-       
+        input.username = input.username.toLocaleLowerCase()
+
         this.logger.log('creating');
         return await this.memberService.saveOrUpdateManyMember(input)
     }
-    
     @Put()
     @UsePipes(new ValidationPipe({ transform: true }))
     async updateMember(
@@ -265,7 +313,7 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
         if (!member) throw new NotFoundException()
 
         const result = await this.memberService.updateMember(member, input)
- 
+
         await this.cacheManager.del(`_memberRepo_${input.username.toLowerCase()}`)
         await this.cacheManager.del('_member_info_' + input.username.toLocaleLowerCase())
         await this.cacheManager.del('_member_' + input.username.toLocaleLowerCase())
@@ -286,9 +334,9 @@ const decode_username = this.decodeSeamlessUsername(username.toLocaleLowerCase()
         if (!member) throw new NotFoundException()
 
         const result = await this.memberService.updateMemberPassword(member, input)
- 
-       
-        return  {status:true,message:"บันทึกสำเร็จ"}
+
+
+        return { status: true, message: "บันทึกสำเร็จ" }
     }
     @Delete('/:hash')
     async deleteNotifySetting(

@@ -35,6 +35,7 @@ import { HttpException } from '@nestjs/common/exceptions';
 import { Cache } from "cache-manager";
 import { plainToClass } from 'class-transformer';
 import { ChangePasswordFrontendDto } from 'src/Input/change.password.frontend.dto';
+import { SettingDto } from 'src/Input/setting.dto';
 const qs = require('querystring');
 @Injectable()
 export class MemberService {
@@ -48,7 +49,6 @@ export class MemberService {
         private readonly configService: ConfigService,
 
 
-
     ) {
 
     }
@@ -56,14 +56,14 @@ export class MemberService {
 
     public async getMember(username: string): Promise<Members> {
 
-        // return await this.memberRepository.findOne({ where: { username: username } });
+
 
         const cacheName = `_memberRepo_${username.toLowerCase()}`
 
         const value = await this.cacheManager.get(cacheName)
         if (value) return plainToClass(Members, value)
         console.log('get _memberRepo_ :', username)
-        const member = await this.memberRepository.findOne({ where: { username: username } });
+        const member = await this.memberRepository.findOne({ where: { username: username }, loadEagerRelations: true });
 
         await this.cacheManager.set(cacheName, member, { ttl: null })
 
@@ -77,7 +77,19 @@ export class MemberService {
         return await this.memberRepository.find({ where: { company: company, agent: agent, bankAccRef: fromBankRef } });
 
     }
+    public async getSettingByhash(hash: string) {
 
+        const url_allsetting = `${process.env.ALL_SETTING}/api/Setting/${hash}`
+
+
+        try {
+            const setting = await this.httpService.get(url_allsetting).toPromise()
+            return setting.data
+        } catch (error) {
+            console.log(error)
+            return null
+        }
+    }
     public async getMemberById(id: string): Promise<Members> {
 
         return await this.memberRepository.findOne(id);
@@ -235,6 +247,97 @@ export class MemberService {
         this.logger.log('member saved');
 
         return members
+    }
+
+    public async validateMemberData(input: CreateMemberDto) {
+        console.log('checking phone')
+        const phone_check = await this.memberRepository.findOne({
+
+            where: { phone: input.phone, agent: input.agent, company: input.company }
+        })
+        
+       
+        if (phone_check) throw new BadRequestException('เบอร์โทรศัพท์นี้ได้สมัครใช้งานแล้ว')
+        console.log('checking bank acc')
+        const bankAcc_check = await this.memberRepository.findOne({
+
+            where: { bankAcc: input.bankAcc, agent: input.agent, company: input.company }
+        })
+        if (bankAcc_check) throw new BadRequestException('เลขบัญชีนี้ได้สมัครใช้งานแล้ว')
+
+        console.log('checkingname lastname')
+        const name_lastname = await this.memberRepository.findOne({
+
+            where: { name: input.name, lastname: input.lastname, agent: input.agent, company: input.company }
+        })
+        if (name_lastname) throw new BadRequestException('ชื่อ - นามสกุลนี้ได้สมัครใช้งานแล้ว')
+        console.log('checking criminal')
+        const criminal_check = await this.checkCriminal(input)
+        if (criminal_check) throw new BadRequestException('ข้อมูล ซ้ำกับมิจฉาชีพ  ไม่สามารถสมัครได้')
+        console.log('checking company bank')
+        const company_bank_check = await this.checkCompanyBank(input)
+        if (company_bank_check) throw new BadRequestException('เลขบัญชีซ้ำกับในระบบ')
+      
+      
+
+    }
+    public async generateMember(input:CreateMemberDto,setting:Setting){
+        input.username = await this.generateUsername(input)
+        if (input.bankName == "KBANK") {
+            input.bankAccRef = `X-${input.bankAcc.slice(6)}` //Str::substr($bankAcc, 6);
+        } else if (input.bankName  == "TRUEWALLET") {
+            input.bankAccRef   = input.phone
+        } else if (input.bankName  == "GSB") {
+            input.bankAccRef  = `X${input.bankAcc.slice(6)}` // Str::substr($bankAcc, 6);
+        } else if (input.bankName  == "BAAC") {
+            input.bankAccRef = `X${input.bankAcc.slice(6)}` // Str::substr($bankAcc, 6);
+        } else {
+            input.bankAccRef  = `X${input.bankAcc.slice(4)}` // Str::substr($bankAcc, 4);
+        }
+        input.sync = true
+      
+        const member = await this.memberRepository.save(input)
+        return member
+    }
+    private async generateUsername(input:CreateMemberDto):Promise<string>{
+        let username_temp = `${input.agent.toLowerCase()}${input.phone.slice(3)}`
+        for (let index = 3; index > 0; index--) {
+           
+            const member_temp = await this.memberRepository.findOne({where:{username:username_temp}})
+            if(member_temp){
+                username_temp = `${input.agent.toLowerCase()}${input.phone.slice(index)}`
+            } else {
+                return username_temp
+            }
+        }
+        return username_temp
+    }
+    public async checkCompanyBank(input: CreateMemberDto) {
+        const url_all_company_bank = `${process.env.ALL_CRIMINAL}/api/Company/Check/${input.bankAcc}`
+
+        try {
+            const result = await this.httpService.get(url_all_company_bank).toPromise()
+            if (result.data.result == true) return true
+            return false
+        } catch (error) {
+            return false
+        }
+    }
+    public async checkCriminal(input: CreateMemberDto) {
+        const url_criminal = `${process.env.ALL_CRIMINAL}/api/CheckAll`
+        const body = {
+            name: input.name,
+            lastname: input.lastname,
+            phone: input.phone,
+            bankAcc: input.bankAcc
+        }
+        try {
+            const result = await this.httpService.post(url_criminal, body).toPromise()
+            if (result.data.valid == 1) return true
+            return false
+        } catch (error) {
+            return false
+        }
     }
     public async saveOrUpdateManyMember(input: CreateMemberDto[] | CreateMemberDto | CreateMemberAgentDto) {
 
@@ -493,6 +596,7 @@ export class MemberService {
 
         member.sync = true
         await this.memberRepository.save(member)
+        console.log('member sync updated')
     }
 }
 

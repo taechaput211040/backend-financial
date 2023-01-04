@@ -46,6 +46,15 @@ export class WebsiteService {
     }
 
 
+    public async getWebInfoByMemberLink(origin: string): Promise<Website> {
+        return await this.WebsiteRepository.findOne({
+
+            where: {
+                member_link: origin,
+
+            }
+        });
+    }
 
     public async getWebInfo(website: string): Promise<Website> {
         return await this.WebsiteRepository.findOne({

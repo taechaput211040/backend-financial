@@ -1,91 +1,257 @@
-import { Body, CACHE_MANAGER, ClassSerializerInterceptor, Controller, Get, HttpCode, Inject, Logger, Param, Post, Req, Request, SerializeOptions, UnauthorizedException, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException,Inject,CACHE_MANAGER, Body, ClassSerializerInterceptor, Controller, Get, HttpCode, Logger, Post, Req, Response, SerializeOptions, UnauthorizedException, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
+import { plainToClass } from "class-transformer";
 import { AuthService } from "./auth.service";
 import { AuthGuardJwt } from "./autn-guard.jwt";
-import { LoginDto } from "./login.dto";
+import * as bcrypt from "bcrypt"
+import { JwtService } from "@nestjs/jwt";
+import { Response as ResEx, Request } from "express";
+import { JwtStrategy } from "./jwt.strategy";
+import { MoreThanOrEqual } from "typeorm";
+import { WebsiteService } from "src/Website/website.service";
+import { NotFoundException } from "@nestjs/common/exceptions";
+import { LoginDto } from "src/Input/login.dto";
 import { Cache } from "cache-manager";
 
-@Controller('/api/Login/auth')
-@SerializeOptions({ strategy: 'excludeAll', groups: ['superadmin'] })
+import { RealIP } from 'nestjs-real-ip';
+@Controller('/api/Auth')
+
+@SerializeOptions({ strategy: 'excludeAll' })
 export class AuthController {
     private readonly logger = new Logger(AuthController.name);
     constructor(
-        private readonly authService: AuthService
+        private readonly authService: AuthService,
+        // private readonly userService: UserService,
+        private readonly jwtService: JwtService,
+        // private readonly tokenService: TokenService
+        
+        @Inject(CACHE_MANAGER) private cacheManager: Cache,
     ) { }
 
-    // @Get('/check/:username/:ssid')
-    // // @UseGuards(AuthGuardJwt)
-    // async checkSession(@Req() request,
-    //     @Param('username') username: string,
-    //     @Param('ssid') ssid: string,
+    @Post('/Login')
+    async login(
+        @Body() input: LoginDto,
+        @Req() request: Request,
+        
+        @RealIP() ip: string,
+        @Response({ passthrough: true }) response: ResEx) {
+        this.logger.log('Login hit')
+        // let user = await this.userService.find(agent, username)
+        //    console.log(user)
+        console.log(request.headers)
+        console.log(input)
+
+   
+         
+         let  member =  await this.authService.validateMember(input)
+         const username = member.username.toUpperCase()
+         const agent = member.agent
+         const company = member.company
+
+               const accessToken = await this.jwtService.signAsync({
+            username
+            ,agent,
+            company
+            })
+
+            const ssid = Math.floor(Math.random() * 100000) + 100001
+            await this.cacheManager.set('_SSID_' + input.username.toUpperCase(), ssid, { ttl: 3600 });
+          await this.authService.updateTokenMember(accessToken,member,ip)
+        //   const a = {
+        //     "username": "LS2243825",
+        //     "accessTokenMember": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6Ijc1MzVjMzYyLWQzMTgtNDA2OS1hYzcxLTUzOTg2OWRjNjA0YSIsInVzZXJuYW1lIjoiTFMyMjQzODI1Iiwic3RhdHVzIjoxLCJ0cmFuc2FjdGlvbiI6IjE2NTgxOTA4MzAifQ.8EhhU_SDIHVzcozNSx0Av9G90m1Tct1t5WntXHawRZU",
+        //     "id": "7535c362-d318-4069-ac71-539869dc604a",
+        //     "randomkey": 197539
+        //   }
+          return {username : member.username.toUpperCase(),
+            accessTokenMember:accessToken,
+        id:member.id,
+        randomkey:ssid}
+        //    const a = await bcrypt.hash("hasha",10)
+        //    return await bcrypt.compare(password,user.password)
+        // if (!user) throw new BadRequestException('ข้อมูลไม่ถูกต้อง')
+        // if (!user.status) throw new BadRequestException('คุณถูกระงับการใช้งาน')
+        // if (!await bcrypt.compare(password, user.password)) throw new BadRequestException('ข้อมูลไม่ถูกต้อง')
+        // const id = user.id
+        // response.status(200)
+        // if (user.tfa_status) {
+
+          
+        // } else {
+        //     const accessToken = await this.jwtService.signAsync({
+        //         id
+        //     })
+    
+        //     const refreshToken = await this.jwtService.signAsync({
+        //        id
+        //     })
+        //     const expired_at = new Date()
+        //     expired_at.setDate(expired_at.getDate() + 2)
+    
+        //     if (request.headers['x-real-ip']) await this.userService.upDateIP(user, request.headers['x-real-ip'].toString())
+        //     await this.tokenService.save({
+        //         user_id: user.id,
+        //         token: refreshToken,
+        //         expired_at: expired_at
+        //     })
+        //     // console.log(response.status())
+        //     if (!user.menu_permission) user = await this.userService.assignDefaultMenu(user)
+        //     response.cookie('refresh_token', refreshToken, { httpOnly: true, maxAge: 1 * 24 * 60 * 60 * 1000 })
+        //     response.status(200)
+        //     return {
+        //         id: user.id,
+        //         token: accessToken,
+        //         refreshToken: refreshToken,
+        //         verify: user.tfa_secret ? true : false,
+        //         role: user.role,
+        //         username: user.username,
+        //         agent: user.agent,
+        //         company:user.company,
+        //         setting:await this.authService.getHash(user),
+        //         s_admin: user.s_admin,
+        //         limittopup: user.limittopup,
+        //         creditperday: user.creditperday,
+        //         menu: user.menu_permission,
+        //         ip: user.ip,
+        //         tfa_status:user.tfa_status
+        //     }
+        // }
+    }
+
+    // @Post('/two-factor')
+    // async twofactor(
+    //     @Body('id') id: string,
+    //     @Body('code') code: string,
+    //     @Response({ passthrough: true }) response: ResEx,
+    //     @Req() request: Request,
+    //     @Body('secret') secret?: string
     // ) {
-    //     this.logger.log("test")
-    //     const cac = await this.cacheManager.get('_SSID_' + username)
-    //     if (cac) {
-    //         this.logger.log("test "+cac)
+    //     console.log(request.headers['x-real-ip'])
+    //     let user = await this.userService.findByID(id)
+    //     if (!user) throw new BadRequestException('ข้อมูลไม่ถูกต้อง')
 
-    //         this.logger.log("ssid "+ssid)
-    //         if (cac == ssid) {
-    //             // await this.cacheManager.set('_SSID_' + username,ssid, { ttl: 3600 });
-    //             const ssid_new = Math.floor(Math.random() * 100000) + 100001
-    //             await this.cacheManager.set('_SSID_' + username, ssid_new, { ttl: 3600 });
-    //             this.logger.log("ok")
-    //             return {
+    //     if (!secret) secret = user.tfa_secret
 
-    //                 ssid: ssid_new
-    //             }
-    //         } else {
-    //             this.logger.log("401")
-    //             throw new UnauthorizedException()
+    //     const verified = speakeasy.totp.verify({
+    //         secret, encoding: 'ascii', token: code
+    //     })
+
+    //     if (!verified) throw new BadRequestException('ข้อมูลไม่ถูกต้อง')
+
+    //     const user_update = await this.userService.updateUserSecret(user, secret)
+    //     console.log(user_update)
+
+
+    //     const accessToken = await this.jwtService.signAsync({
+    //         id
+    //     }, { expiresIn: '1 days' })
+
+    //     const refreshToken = await this.jwtService.signAsync({
+    //         id
+    //     }, { expiresIn: '1 days' })
+    //     const expired_at = new Date()
+    //     expired_at.setDate(expired_at.getDate() + 2)
+
+    //     if (request.headers['x-real-ip']) await this.userService.upDateIP(user_update, request.headers['x-real-ip'].toString())
+    //     await this.tokenService.save({
+    //         user_id: user.id,
+    //         token: refreshToken,
+    //         expired_at: expired_at
+    //     })
+    //     // console.log(response.status())
+    //     if (!user.menu_permission) user = await this.userService.assignDefaultMenu(user_update)
+    //     response.cookie('refresh_token', refreshToken, { httpOnly: true, maxAge: 1 * 24 * 60 * 60 * 1000 })
+    //     response.status(200)
+    //     return {
+    //         id: user.id,
+    //         token: accessToken,
+    //         refreshToken: refreshToken,
+    //         verify: user.tfa_secret ? true : false,
+    //         role: user.role,
+    //         username: user.username,
+    //         agent: user.agent,
+    //         s_admin: user.s_admin,
+    //         limittopup: user.limittopup,
+    //         creditperday: user.creditperday,
+    //         menu: user.menu_permission,
+    //         ip: user.ip
+   
+
+    //     }
+    // }
+
+
+    // @Post('refresh')
+
+    // async refresh(
+    //     @Req() request: Request,
+    //     @Response({ passthrough: true }) response: ResEx
+    // ) {
+    //     this.logger.log('refresh hit')
+    //     try {
+    //         const refresh_token: any = request.headers['autorization']
+    //         console.log(refresh_token)
+    //         const { id } = await this.jwtService.verifyAsync(refresh_token)
+
+    //         const tokenEntiry = await this.tokenService.findOne({
+    //             user_id: id,
+    //             expired_at: MoreThanOrEqual(new Date())
+    //         })
+
+    //         if (!tokenEntiry) throw new UnauthorizedException()
+
+
+    //         const accessToken = await this.jwtService.signAsync({ id }, { expiresIn: '2 days' })
+    //         response.status(200)
+    //         return {
+    //             token: accessToken
     //         }
-    //     } else{
-    //         this.logger.log("4012")
+    //     } catch (error) {
     //         throw new UnauthorizedException()
     //     }
 
     // }
-    // @Post("/:hash")
-    // // @UseGuards(AuthGuard('jwt'))
-    // @HttpCode(200)
-    // async login(
-    //     @Req() request,
-    //     @Body() body: LoginDto,
-    //     @Param("hash") hash:string
+    // @Get('user')
+    // @UseGuards(JwtStrategy)
+    // @UseInterceptors(ClassSerializerInterceptor)
+    // async getAuthUser(
+    //     @Req() request: Request,
+    //     @Response({ passthrough: true }) response: ResEx
     // ) {
-    //     // this.logger.log(request.headers)
-    //     this.logger.log("teasdasdst")
+    //     console.log("user hit")
+    //     const token: any = request.headers['autorization'] 
+    //     console.log(token)
+    //     const { id } = await this.jwtService.verifyAsync(token)
+    //     const user = await this.userService.findByID(id)
 
-    //     //check in rico
-    //     let login_rico = await this.authService.loginRico(body,hash)
-    //     const ssid = Math.floor(Math.random() * 100000) + 100001
-    //     await this.cacheManager.set('_SSID_' + login_rico.username, ssid, { ttl: 3600 });
-    //     login_rico.randomkey = ssid
-    //     this.logger.log( login_rico)
-    //     return login_rico;
-
-
+    //     return user
 
     // }
-    @Get('role')
-    @UseGuards(AuthGuardJwt)
-    async getRole(@Req() request) {
-
-        return request.headers
-
-    }
-
-    // @Post('/user')
-    // // @UseGuards(AuthGuardJwt)
+    // @Get('user/V2')
+    // @UseGuards(JwtStrategy)
     // @UseInterceptors(ClassSerializerInterceptor)
-    // async createdUser(@Req() request, @Body() body: UserDto) {
-    //     this.logger.log(request.headers.key)
-    //     if (request.headers.key == process.env.SUPERADMIN_KEY_MASTER) {
-    //         return await this.authService.createUser(body);
+    // async getAuthUserV2(
+    //     @Req() request: Request,
+    //     @Response({ passthrough: true }) response: ResEx
+    // ) {
+    //     console.log("user hit")
+    //     const token: any = request.headers['authorization'] 
+    //     console.log(token)
+    //     const { id } = await this.jwtService.verifyAsync(token)
+    //     const user = await this.userService.findByID(id)
 
-    //     } else {
-    //         throw new UnauthorizedException();
-    //     }
+    //     return user
 
-
+    // }
+    // @Post('/logout')
+    // @HttpCode(204)
+    // async logout(
+    //     @Req() request: Request,
+    //     @Response({ passthrough: true }) response: ResEx
+    // ) {
+    //     const token: any = request.headers['autorization']
+    //     await this.tokenService.delete({ token: token })
+    //     response.clearCookie('refresh_token')
+    //     return
     // }
 }

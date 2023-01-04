@@ -6,7 +6,9 @@ export class CreateMemberDto {
 
     // npm i --save class-validator class-transformer
     // require
-
+    @IsString()
+    @IsOptional()
+    id: string;
     @IsNumber()
     @IsOptional()
     rico_id: number;
@@ -42,6 +44,7 @@ export class CreateMemberDto {
     bonusid: number;
     
     @IsString()
+     @IsOptional()
     username: string;
 
     @IsOptional()
@@ -160,4 +163,7 @@ export class CreateMemberDto {
     @IsOptional()
     @IsString()
     bonusid_v2 :string
+    @IsOptional()
+    @IsString()
+    ip:string
 } 

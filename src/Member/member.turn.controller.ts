@@ -44,11 +44,13 @@ export class MemberTurnController {
         if (!member) throw new NotFoundException()
         if (member.sync) {
             //check turn V2
+         
             const creditBalance = await this.memberTurnService.getBalanceV2(member)
             
             return {credit : creditBalance.balance, user:member.username.toUpperCase()}
         } else {
             // go sync turn and credit
+           
            await this.memberTurnService.findmemberRico(member)
             // await this.cacheManager.set(cacheName, member_rico, { ttl: null })
           
@@ -89,6 +91,7 @@ export class MemberTurnController {
             if (member_turn_v2.min_turn <= 0) {
                 return { message: "กรุณากรอกจำนวนเงินที่ต้องการถอน", turnStatus: false }
             }
+            this.logger.log('getting winlose');
             winlose = await this.memberTurnService.getWinlose(member)
         } else {
             // go sync turn and credit
@@ -104,7 +107,9 @@ export class MemberTurnController {
         // $outs = $b->json()['outstanding'];
 
 
-        //calculate turn diff 
+        //calculate turn diff this.logger.log('getting winlose');
+        this.logger.log(winlose);
+        this.logger.log('calculateTurnDiff');
         const diff = await this.memberTurnService.calculateTurnDiff(winlose.validAmount, member_turn_v2)
         const min_value = Object.values(diff)
 
@@ -185,6 +190,41 @@ export class MemberTurnController {
 
 
     }
+    @Get('WithTurn/:username')
+    async getMemberWithTurn(
+        @Param('username') username: string
+    ) {
+        this.logger.log('getMemberWithTurn hit');
+        const cacheName = `_member_with_turn_${username.toLowerCase()}`
+
+        const value = await this.cacheManager.get(cacheName)
+        if (value) return value
+
+        const member = await this.memberService.getMember(username)
+        // return member
+        if (!member) throw new NotFoundException()
+        if (member.sync) {
+            //check turn V2
+            const member_turn_v2 = await this.memberTurnService.getMemberTurn(username)
+
+            return {member:member,turn:member_turn_v2}
+        } else {
+            // go sync turn and credit
+            const member_rico = await this.memberTurnService.findmemberRico(member)
+            await this.cacheManager.set(cacheName, member_rico, { ttl: null })
+            return {member:member,turn:member_rico}
+        }
+
+        // const a = await this.websiteService.getWebInfoByHashAllData(input.hash)
+        // if (!a) throw new NotFoundException()
+
+        // const member = await this.memberService.getMember(input.username.toLocaleLowerCase())
+        // // if (member) throw new BadRequestException("Duplicate Username")
+        // input.username = input.username.toLocaleLowerCase() 
+
+
+        // return await this.memberTurnService.saveOrUpdateManyMemberTurn(input)
+    }
     @Get('/:username')
     async getTurn(
         @Param('username') username: string
@@ -224,7 +264,7 @@ export class MemberTurnController {
         @Body() input: WithdrawMemberDto
     ) {
         this.logger.log('withdrawMember hit');
-
+        // throw new NotFoundException({ message: "ไม่พบข้อมูลยูสเซ่อร์", turnStatus: true ,status:400})
         const cacheName = `_withdraw_member_${input.username}_${input.amount.toString()}`
 
         if (await this.cacheManager.get(cacheName)) return
@@ -243,9 +283,9 @@ export class MemberTurnController {
 
         if (!member) throw new NotFoundException({ message: "ไม่พบข้อมูลยูสเซ่อร์", turnStatus: true })
         const setting = await this.memberTurnService.getSetting(member.company, member.agent)
+        if (!setting || setting.system_status == false ) throw new BadRequestException({ message: "เว็บปิดใช้งาน", turnStatus: true })
 
-        if (!setting || setting.system_status == false || setting.wd_status == false) throw new BadRequestException({ message: "เว็บปิดใช้งาน", turnStatus: true })
-
+      
         if (setting.wd_status == false) throw new BadRequestException({ message: "ระบบถอนปิดใช้งานชั่วคราว", turnStatus: true })
 
         await this.memberTurnService.checkIsCanwithdrawTodayFromSetting(member, setting, input.amount)

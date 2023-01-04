@@ -36,14 +36,51 @@ export class MemberTurnService {
 
     }
 
+public async syncMember(member:Members){
+    const setting = await this.getSetting(member.company, member.agent)
+    if (!setting || setting.system_status == false) throw new NotFoundException({ message: "เว็บปิดใช้งาน", turnStatus: true })
+    try {
+        let member_turn_v2
+        let winlose
 
+        // go sync turn and credit
+
+        member_turn_v2 = await this.findmemberRicoSync(member,setting)
+
+
+        winlose = await this.getWinlose(member)
+
+        // $valids = $b->json()['validAmount'];
+        // $outs = $b->json()['outstanding'];
+
+
+        //calculate turn diff 
+        const diff = await this.calculateTurnDiff(winlose.validAmount, member_turn_v2)
+        const min_value = Object.values(diff)
+
+
+        const keysSorted = Object.keys(diff).sort(function (a, b) { return diff[a] - diff[b] })
+
+        const display_type = await this.mapTypeToDisplay(keysSorted[0])
+        //update min turn 
+
+        member_turn_v2.min_turn = Math.min(...min_value)
+        // turn or not 
+        member_turn_v2 = await this.updateMemberTurn(member_turn_v2, member_turn_v2)
+        return
+    } catch (error) {
+        throw new BadRequestException('sync error')
+    }
+
+
+}
     public async getMemberTurn(username: string): Promise<MemberTurn> {
         const cacheName = `_turn_${username.toLowerCase()}`
 
-        const value = await this.cacheManager.get(cacheName)
-        if (value) return plainToClass(MemberTurn, value)
+        // const value = await this.cacheManager.get(cacheName)
+        // if (value) return plainToClass(MemberTurn, value)
         console.log('get turn :', username)
-        const turn = await this.memberTurnRepository.findOne({ where: { username: username } });
+        const turn = await this.memberTurnRepository.findOne({ where: { username: username.toLowerCase() }  });
 
         await this.cacheManager.set(cacheName, turn, { ttl: null })
 
@@ -60,6 +97,8 @@ export class MemberTurnService {
         
         const new_turn = await this.memberTurnRepository.save({ ...member_turn, ...input });
         const cacheName = `_turn_${member_turn.username.toLowerCase()}`
+        const cacheName_with_turn = `_member_with_turn_${member_turn.username.toLowerCase()}`
+        await this.cacheManager.del(cacheName_with_turn)
         await this.cacheManager.del(cacheName)
         await this.cacheManager.set(cacheName, new_turn, { ttl: null })
         return new_turn
@@ -119,6 +158,7 @@ export class MemberTurnService {
 
 
     async findmemberRico(member: Members) {
+        console.log('member sync start')
         const setting: Setting = await this.getSetting(member.company, member.agent)
         if (!setting) throw new NotFoundException()
 
@@ -133,15 +173,18 @@ export class MemberTurnService {
 
         const rico_member_turn = await this.getRicoMemberTurn(rico_member[0], setting)
         if (rico_member_turn.length == 0) {
+            console.log('rico turn = 0 ')
             const current_credit = await this.syncMemberCreditToV2(member, setting, rico_member)
             return await this.createTurnV2(member, setting, current_credit)
         } else if (rico_member_turn.length > 0) {
+            console.log('rico turn > 0 ')
             const current_credit = await this.syncMemberCreditToV2(member, setting, rico_member)
             return await this.syncTurnV2(rico_member_turn, member, setting, current_credit)
         }
 
     }
     async getBalanceV2(member: Members) {
+        console.log('member getting balance')
         const setting: Setting = await this.getSetting(member.company, member.agent)
         if (!setting) throw new NotFoundException()
 const cacheName = `_balance_${member.username}`
@@ -346,7 +389,7 @@ const cacheName = `_balance_${member.username}`
 
     }
     async createTurnV2(member: Members, setting: Setting, current_credit: number) {
-
+        console.log('creating turnv2 ')
         const turn = new MemberTurn()
         turn.username = member.username
         turn.limitwithdraw = 0
@@ -392,7 +435,7 @@ const cacheName = `_balance_${member.username}`
     }
     async syncTurnV2(memberTurn_array: any, member: Members, setting: Setting, current_credit: number) {
         // console.log(memberTurn_array)
-
+        console.log('syncronizing rico turnv2')
         const turn = new MemberTurn()
         turn.created_at = memberTurn_array[0].created_at
         turn.updated_at = memberTurn_array[0].updated_at

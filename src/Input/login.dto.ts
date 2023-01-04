@@ -1,4 +1,4 @@
-import { IsString, Length } from "class-validator";
+import { IsOptional, IsString, Length } from "class-validator";
 
 export class LoginDto{
 
@@ -15,6 +15,8 @@ export class LoginDto{
     @IsString()
     @Length(1,255)
     password:string;
+@IsOptional()
+    origin:string;
     
     
    
