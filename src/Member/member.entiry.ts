@@ -187,20 +187,13 @@ export class Members {
     @Column({nullable:true})
     @Expose()
     bonusid_v2 :string
-    // @ManyToOne(() => Section, (section) => section.id, {
-    //     nullable: true,
-    //     onDelete:'CASCADE'
-    // })
-    // @JoinColumn(
-    //         {
-    //         name:'section_id',
-    //     }
-    // )
-    // section: Section;
-    // @Column({ nullable: true })
-    // @Expose()
-    // section_id:string;
+
  
+    @Column({nullable:true})
+    @Expose()
+    scb_api_ref:string
 
-
+    @Column({nullable:true})
+    @Expose()
+    other_api_ref:string
 }

@@ -166,4 +166,12 @@ export class CreateMemberDto {
     @IsOptional()
     @IsString()
     ip:string
+
+    @IsOptional()
+    @IsString()
+    scb_api_ref:string
+
+    @IsOptional()
+    @IsString()
+    other_api_ref:string
 } 

@@ -36,54 +36,60 @@ export class MemberTurnService {
 
     }
 
-public async syncMember(member:Members){
-    const setting = await this.getSetting(member.company, member.agent)
-    if (!setting || setting.system_status == false) throw new NotFoundException({ message: "เว็บปิดใช้งาน", turnStatus: true })
-    try {
-        let member_turn_v2
-        let winlose
+    public async syncMember(member: Members) {
+        const setting = await this.getSetting(member.company, member.agent)
+        if (!setting || setting.system_status == false) throw new NotFoundException({ message: "เว็บปิดใช้งาน", turnStatus: true })
+        try {
+            let member_turn_v2
+            let winlose
 
-        // go sync turn and credit
+            // go sync turn and credit
 
-        member_turn_v2 = await this.findmemberRicoSync(member,setting)
-
-
-        winlose = await this.getWinlose(member)
-
-        // $valids = $b->json()['validAmount'];
-        // $outs = $b->json()['outstanding'];
+            member_turn_v2 = await this.findmemberRicoSync(member, setting)
 
 
-        //calculate turn diff 
-        const diff = await this.calculateTurnDiff(winlose.validAmount, member_turn_v2)
-        const min_value = Object.values(diff)
+            winlose = await this.getWinloseForSync(member)
+
+            // $valids = $b->json()['validAmount'];
+            // $outs = $b->json()['outstanding'];
 
 
-        const keysSorted = Object.keys(diff).sort(function (a, b) { return diff[a] - diff[b] })
+            //calculate turn diff 
+            const diff = await this.calculateTurnDiff(winlose.validAmount, member_turn_v2)
+            const min_value = Object.values(diff)
 
-        const display_type = await this.mapTypeToDisplay(keysSorted[0])
-        //update min turn 
 
-        member_turn_v2.min_turn = Math.min(...min_value)
-        // turn or not 
-        member_turn_v2 = await this.updateMemberTurn(member_turn_v2, member_turn_v2)
-        return
-    } catch (error) {
-        throw new BadRequestException('sync error')
+            const keysSorted = Object.keys(diff).sort(function (a, b) { return diff[a] - diff[b] })
+
+            const display_type = await this.mapTypeToDisplay(keysSorted[0])
+            //update min turn 
+
+            member_turn_v2.min_turn = Math.min(...min_value)
+            // turn or not 
+            member_turn_v2 = await this.updateMemberTurn(member_turn_v2, member_turn_v2)
+
+            await this.memberService.saveMember(member)
+            return
+        } catch (error) {
+            throw new BadRequestException('sync error')
+        }
+
+
     }
-
-
-}
     public async getMemberTurn(username: string): Promise<MemberTurn> {
         const cacheName = `_turn_${username.toLowerCase()}`
 
-        // const value = await this.cacheManager.get(cacheName)
-        // if (value) return plainToClass(MemberTurn, value)
+        const value = await this.cacheManager.get(cacheName)
+        if (value) return plainToClass(MemberTurn, value)
         console.log('get turn :', username)
-        const turn = await this.memberTurnRepository.findOne({ where: { username: username.toLowerCase() }  });
+        const turn = await this.memberTurnRepository.findOne({ where: { username: username.toLowerCase() } });
+        console.log(turn)
 
-        await this.cacheManager.set(cacheName, turn, { ttl: null })
+        if (turn) {
+            await this.cacheManager.set(cacheName, turn, { ttl: null })
 
+
+        }
         return turn
 
     }
@@ -92,16 +98,22 @@ public async syncMember(member:Members){
         const url = `${process.env.ALL_SETTING}`
     }
     public async updateMemberTurn(member_turn: MemberTurn, input: UpdateMemberTurnDto): Promise<MemberTurn> {
-        console.log('member_turn:',member_turn)
-        console.log('input:',input)
-        
-        const new_turn = await this.memberTurnRepository.save({ ...member_turn, ...input });
-        const cacheName = `_turn_${member_turn.username.toLowerCase()}`
-        const cacheName_with_turn = `_member_with_turn_${member_turn.username.toLowerCase()}`
-        await this.cacheManager.del(cacheName_with_turn)
-        await this.cacheManager.del(cacheName)
-        await this.cacheManager.set(cacheName, new_turn, { ttl: null })
-        return new_turn
+        console.log('member_turn:', member_turn)
+        console.log('input:', input)
+        try {
+            const new_turn = await this.memberTurnRepository.save({ ...member_turn, ...input });
+            const cacheName = `_turn_${member_turn.username.toLowerCase()}`
+            const cacheName_with_turn = `_member_with_turn_${member_turn.username.toLowerCase()}`
+            await this.cacheManager.del(cacheName_with_turn)
+            await this.cacheManager.del(cacheName)
+            await this.cacheManager.set(cacheName, new_turn, { ttl: null })
+            return new_turn
+        } catch (error) {
+
+
+            console.log(error)
+        }
+
 
     }
 
@@ -187,12 +199,26 @@ public async syncMember(member:Members){
         console.log('member getting balance')
         const setting: Setting = await this.getSetting(member.company, member.agent)
         if (!setting) throw new NotFoundException()
-const cacheName = `_balance_${member.username}`
-       const credit = await this.memberService.getCreditByDisplaynameV2(member,setting)
+        const cacheName = `_balance_${member.username}`
+        const credit = await this.memberService.getCreditByDisplaynameV2(member, setting)
 
         return credit
-   
 
+
+    }
+    async getIPdata(username: string) {
+        const url_all_maintanance = `${process.env.CHECK_MAINTAINANCE}/api/UserStat/${username.toUpperCase()}`
+        try {
+            const result = await this.httpService.get(url_all_maintanance).toPromise()
+            // console.log(result.data)
+            console.log('getIPdata success :', result.data)
+            return result.data
+        } catch (error) {
+            console.log('getIPdata error :', error)
+            console.log(error.response.data)
+            return null
+        }
+        // $url_ip = env('CHECK_MAINTAINANCE')."/api/UserStat/".$user;
     }
     async findmemberRicoSync(member: Members, setting: Setting) {
 
@@ -218,27 +244,91 @@ const cacheName = `_balance_${member.username}`
     }
     async getWinlose(member: Members) {
         console.log('getWinlose :', member.username)
-        if (!member.lastest_dpref) throw new BadRequestException({ message: "ยูสเซอร์นี้ยังไม่มีการฝากเงิน", turnStatus: true })
+        if (!member.lastest_dpref) {
+
+            throw new BadRequestException({ message: "ยูสเซอร์นี้ยังไม่มีการฝากเงิน", turnStatus: true })
 
 
-        // get start cal time from all deposit
+        } else {
+            // get start cal time from all deposit
 
-        const deposit_url = `${process.env.ALL_DEPOSIT}/api/Deposit/DpRef/${member.lastest_dpref}`
-        console.log(deposit_url)
-        let deposit
-        try {
-            const result = await this.httpService.get(deposit_url).toPromise()
-            // console.log(result.data)
+            const deposit_url = `${process.env.ALL_DEPOSIT}/api/Deposit/DpRef/${member.lastest_dpref}`
+            console.log(deposit_url)
+            let deposit
+            try {
+                const result = await this.httpService.get(deposit_url).toPromise()
+                // console.log(result.data)
+                console.log('deposit_url pass :', result.data)
+                deposit = result.data
+            } catch (error) {
+                console.log('deposit_url error :', error)
+                console.log(error.response.data)
+                throw new BadRequestException({ message: "พบข้อผิดพลาด กรุณาลองใหม่", turnStatus: true })
+            }
 
-            deposit = result.data
-        } catch (error) {
-            console.log(error.response.data)
-            throw new BadRequestException({ message: "พบข้อผิดพลาด กรุณาลองใหม่", turnStatus: true })
+
+            // get from all winlose
+            const start = moment(deposit.created_at).format()
+            const end = moment().format()
+
+
+            const url_all_winlose = `${process.env.ALL_WINLOSE}/api/Realtime/GetWinlose/${member.username}/${start}/(${end})`
+
+            try {
+                const allwinlose = await this.httpService.get(url_all_winlose).toPromise()
+                // console.log(allwinlose.data)
+                console.log('allwinlose pass :', allwinlose.data)
+                return allwinlose.data
+            } catch (error) {
+                console.log('allwinlose error :', error)
+                console.log(error.response.data)
+                throw new BadRequestException({ message: "พบข้อผิดพลาด กรุณาลองใหม่", turnStatus: true })
+            }
+
+
+            // `${process.env.ALL_DEPOSIT}/api/Realtime/GetWinlose/${member.username}/${start}/(${})`
+            // $url = env('ALL_WINLOSE') . "/api/Realtime/GetWinlose" . strtolower($mem->username)  . '/' . $start . '/' .  $end;
+
+
+
+            // return all winlose
+
         }
 
 
+
+
+    }
+    async getWinloseForSync(member: Members) {
+        console.log('getWinloseForSync :', member.username)
+        let start
+        if (!member.lastest_dpref) {
+
+
+            start = moment().format()
+
+        } else {
+            // get start cal time from all deposit
+
+            const deposit_url = `${process.env.ALL_DEPOSIT}/api/Deposit/DpRef/${member.lastest_dpref}`
+            console.log(deposit_url)
+            let deposit
+            try {
+                const result = await this.httpService.get(deposit_url).toPromise()
+                // console.log(result.data)
+                console.log('deposit_url pass :', result.data)
+                deposit = result.data
+            } catch (error) {
+                console.log('deposit_url error :', error)
+                console.log(error.response.data)
+                throw new BadRequestException({ message: "พบข้อผิดพลาด กรุณาลองใหม่", turnStatus: true })
+            }
+
+            start = moment(deposit.created_at).format()
+        }
+
         // get from all winlose
-        const start = moment(deposit.created_at).format()
+
         const end = moment().format()
 
 
@@ -247,22 +337,23 @@ const cacheName = `_balance_${member.username}`
         try {
             const allwinlose = await this.httpService.get(url_all_winlose).toPromise()
             // console.log(allwinlose.data)
+            console.log('allwinlose pass :', allwinlose.data)
             return allwinlose.data
         } catch (error) {
+            console.log('allwinlose error :', error)
             console.log(error.response.data)
             throw new BadRequestException({ message: "พบข้อผิดพลาด กรุณาลองใหม่", turnStatus: true })
         }
 
 
-        // `${process.env.ALL_DEPOSIT}/api/Realtime/GetWinlose/${member.username}/${start}/(${})`
-        // $url = env('ALL_WINLOSE') . "/api/Realtime/GetWinlose" . strtolower($mem->username)  . '/' . $start . '/' .  $end;
 
 
 
-        // return all winlose
+
+
+
 
     }
-
     async checkIsCanwithdrawTodayFromSetting(member: Members, setting: SettingDto, amount: number = 0) {
         console.log('get wd all day :', member.username)
         const amount_and_count = await this.getWithdrawAmountAndCountToday(member.username)
@@ -436,67 +527,92 @@ const cacheName = `_balance_${member.username}`
     async syncTurnV2(memberTurn_array: any, member: Members, setting: Setting, current_credit: number) {
         // console.log(memberTurn_array)
         console.log('syncronizing rico turnv2')
-        const turn = new MemberTurn()
-        turn.created_at = memberTurn_array[0].created_at
-        turn.updated_at = memberTurn_array[0].updated_at
-        turn.username = member.username
-        turn.limitwithdraw = memberTurn_array[0].limitwithdraw
-        turn.sys_limit_amount = setting.wdlimitcredit
-        const turn_mock = {
-            SL: setting.turnNobonus,
-            SB: setting.turnNobonus,
-            LC: setting.turnNobonus,
-            OT: setting.turnNobonus,
-            ES: setting.turnNobonus,
-            FH: setting.turnNobonus,
-            LT: setting.turnNobonus,
-            SL_e: true,
-            SB_e: true,
-            OT_e: true,
-            LC_e: true,
-            ES_e: true,
-            FH_e: true,
-            LT_e: true,
+
+        try {
+            let turn = await this.memberTurnRepository.findOne({ where: { username: member.username.toLowerCase() } })
+            if (!turn) turn = new MemberTurn()
+            turn.created_at = memberTurn_array[0].created_at
+            turn.updated_at = memberTurn_array[0].updated_at
+            turn.username = member.username
+            turn.limitwithdraw = memberTurn_array[0].limitwithdraw
+            turn.sys_limit_amount = setting.wdlimitcredit
+            const turn_mock = {
+                SL: setting.turnNobonus,
+                SB: setting.turnNobonus,
+                LC: setting.turnNobonus,
+                OT: setting.turnNobonus,
+                ES: setting.turnNobonus,
+                FH: setting.turnNobonus,
+                LT: setting.turnNobonus,
+                SL_e: true,
+                SB_e: true,
+                OT_e: true,
+                LC_e: true,
+                ES_e: true,
+                FH_e: true,
+                LT_e: true,
+            }
+            memberTurn_array.map(t => {
+
+                if (t.type == 'SL') {
+                    turn.SL = t.turnTarget
+                    turn_mock.SL = t.turns
+                    turn.FH = t.turnTarget
+                    turn_mock.FH = t.turns
+                }
+                if (t.type == 'LC') {
+                    turn.LC = t.turnTarget
+                    turn_mock.LC = t.turns
+                }
+                if (t.type == 'SB') {
+                    turn.SB = t.turnTarget
+                    turn_mock.SB = t.turns
+                }
+                if (t.type == 'ES') {
+                    turn.ES = t.turnTarget
+                    turn_mock.ES = t.turns
+                }
+                if (t.type == 'OT') {
+                    turn.OT = t.turnTarget
+                    turn_mock.OT = t.turns
+                }
+                if (t.type == 'LT') {
+                    turn.LT = t.turnTarget
+                    turn_mock.LT = t.turns
+                }
+
+            })
+            const closest = memberTurn_array.reduce(
+                (turn, loc) =>
+                    (turn.turnTarget < loc.turnTarget ? turn : loc)
+                , {})
+
+            turn.min_turn = closest.turnTarget
+            turn.turn = JSON.stringify(turn_mock)
+            return await this.memberTurnRepository.save(turn)
+
+        } catch (error) {
+            console.log('error turn', error)
         }
-        memberTurn_array.map(t => {
 
-            if (t.type == 'SL') {
-                turn.SL = t.turnTarget
-                turn_mock.SL = t.turns
-                turn.FH = t.turnTarget
-                turn_mock.FH = t.turns
-            }
-            if (t.type == 'LC') {
-                turn.LC = t.turnTarget
-                turn_mock.LC = t.turns
-            }
-            if (t.type == 'SB') {
-                turn.SB = t.turnTarget
-                turn_mock.SB = t.turns
-            }
-            if (t.type == 'ES') {
-                turn.ES = t.turnTarget
-                turn_mock.ES = t.turns
-            }
-            if (t.type == 'OT') {
-                turn.OT = t.turnTarget
-                turn_mock.OT = t.turns
-            }
-            if (t.type == 'LT') {
-                turn.LT = t.turnTarget
-                turn_mock.LT = t.turns
-            }
+    }
+    async saveUserTransaction(operator: string, action: string, details: string, payload: any, ip_operator: string, company: string, agent: string) {
+        const url_all_user = `${process.env.ALL_RICO_USER}/api/User/Transaction`
+        const body = {
+            username: operator,
+            action: action,
+            details: details,
+            payload: JSON.stringify(payload),
+            ip: ip_operator,
+            company: company,
+            agent: agent
+        }
+        try {
+            await this.httpService.post(url_all_user, body).toPromise()
 
-        })
-        const closest = memberTurn_array.reduce(
-            (turn, loc) =>
-                (turn.turnTarget < loc.turnTarget ? turn : loc)
-            , {})
-
-        turn.min_turn = closest.turnTarget
-        turn.turn = JSON.stringify(turn_mock)
-        return await this.memberTurnRepository.save(turn)
-
+        } catch (error) {
+            console.log(error.response.data)
+        }
     }
 }
 

@@ -73,10 +73,11 @@ export class MemberAgentController {
 
         @Query() pageOptionsDto: PageOptionsDto
     ) {
-
         let member = await this.memberService.getMemberPaginate(pageOptionsDto, company.toLocaleLowerCase(), agent.toLowerCase())
-
-        return member
+        console.log(member)
+                return member
+     
+      
     }
 
     @Post()
@@ -144,11 +145,16 @@ export class MemberAgentController {
 
 
         const member = await this.memberService.getMemberById(input.id)
+        console.log(member)
         if (!member) throw new NotFoundException()
         member.password = input.password
         const result = await this.memberService.saveMemberEntity(member)
-        await this.memberService.changePasswordSmart(member,result.password)
-        await this.websiteService.changePasswordRico(member,result.password)
+      
+        if(!member.sync)  {
+            await this.memberService.changePasswordSmart(member,result.password)
+            await this.websiteService.changePasswordRico(member,result.password)
+        }
+       
         await this.cacheManager.del('_member_info_' + result.username.toLocaleLowerCase())
         await this.cacheManager.del('_member_' + result.username.toLocaleLowerCase())
         await this.cacheManager.del('_member_' + this.generateSeamlessUsername(member))
@@ -169,7 +175,9 @@ export class MemberAgentController {
         if (!member) throw new NotFoundException()
         member.status = input.status
         const result = await this.memberService.saveMemberEntity(member)
-        await this.websiteService.changeStatusRico(member,input.status)
+        
+        if(!member.sync)     await this.websiteService.changeStatusRico(member,input.status)
+    
         await this.cacheManager.del('_member_info_' + result.username.toLocaleLowerCase())
         await this.cacheManager.del('_member_' + result.username.toLocaleLowerCase())
         await this.cacheManager.del('_member_' + this.generateSeamlessUsername(member))

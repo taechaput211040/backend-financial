@@ -55,18 +55,20 @@ export class MemberController {
     async getMemberInfo(
         @Param('displayname') username: string
     ) {
-        const value = await this.cacheManager.get('_member_info_' + username.toLocaleLowerCase());
+        const value = await this.cacheManager.get('_member_info_' + username.toLowerCase());
         console.log('by dispaly hit')
-        // if (value) return plainToClass(Members, value)
-        let member = await this.memberService.getMember(username.toLocaleLowerCase())
+        if (value) return plainToClass(Members, value)
+        let member = await this.memberService.getMember(username.toLowerCase())
 
-        if (!member) throw new NotFoundException()
+        if (!member) throw new NotFoundException({ message: 'ไม่พบ username ในระบบ' })
 
         if (!member.aff_id) {
             this.logger.log('no aff_id  hit');
             const web = await this.websiteService.getWebInfoByHashAllData(member.hash)
+            console.log(member)
             member = await this.memberService.generateAffid(member, web);
         }
+        console.log(member.sync)
         if (!member.sync) await this.memberTurnService.syncMember(member)
         await this.cacheManager.set('_member_info_' + username.toLocaleLowerCase(), member, { ttl: null });
         return member
@@ -210,6 +212,31 @@ export class MemberController {
 
 
     }
+    @Get('/VerifySCB/:company/:agent/:fromBankRef/:fromBank/:name')
+    async verufySCB(
+        @Param('company') company: string,
+        @Param('agent') agent: string,
+        @Param('fromBankRef') fromBankRef: string,
+        @Param('fromBank') fromBank: string,
+        @Param('name') name: string
+
+    ) {
+        this.logger.log('verufySCB  hit');
+        // const value = await this.cacheManager.get('_member_' + displayname.toLocaleLowerCase());
+
+        // if (value) return value
+        console.log(company)
+        console.log(agent)
+        console.log(fromBank)
+        console.log(fromBankRef)
+        const member = await this.memberService.verifyMemberSCB(company.toLowerCase(), agent.toLowerCase(), fromBankRef, fromBank, name)
+        console.log(member)
+        if (member.length == 0) throw new NotFoundException()
+        return member
+
+
+
+    }
     @Post('/Realusername')
     @UsePipes(new ValidationPipe({ transform: true }))
     async Realusername(
@@ -247,7 +274,7 @@ export class MemberController {
         @Body() input: CreateMemberDto
     ) {
         this.logger.log('createMemberFrontend hit');
-     
+
 
         const setting: Setting = await this.memberService.getSettingByhash(hash)
         if (!setting) throw new BadRequestException('ไม่พบข้อมูลเว็บ')
@@ -280,7 +307,45 @@ export class MemberController {
             id: member.id,
             randomkey: ssid
         }
-   
+
+    }
+    @Post('/Auto/:hash')
+    @UsePipes(new ValidationPipe({ transform: true }))
+    async createMemberAutoBackend(
+        @Param('hash') hash: string,
+        @Body() input: CreateMemberDto
+    ) {
+        this.logger.log('createMemberAutoBackend hit');
+
+
+        const setting: Setting = await this.memberService.getSettingByhash(hash)
+        if (!setting) throw new BadRequestException('ไม่พบข้อมูลเว็บ')
+        input.agent = setting.agent_username.toLowerCase()
+        input.company = setting.company.toLowerCase()
+        this.logger.log('validating');
+        await this.memberService.validateMemberData(input)
+        this.logger.log('creating');
+        input.password = input.phone
+
+
+
+        const username = input.username
+        const agent = input.agent
+        const company = input.company
+        const accessToken = await this.jwtService.signAsync({
+            username
+            , agent,
+            company
+        })
+        input.member_token = accessToken
+        const member = await this.memberService.generateMember(input, setting)
+        await this.memberTurnService.createTurnV2(member, setting, 0)
+        return {
+            username: member.username.toUpperCase(),
+            password: member.password
+
+        }
+
     }
     @Post()
     @UsePipes(new ValidationPipe({ transform: true }))
@@ -352,7 +417,7 @@ export class MemberController {
         let seamless_username = member.company + member.agent + member.username
         if (seamless_username.length > 16) { seamless_username = seamless_username.slice(0, 16) }
         return seamless_username
-    }
+    } 
     private decodeSeamlessUsername(username: string) {
         return username.slice(4)
     }

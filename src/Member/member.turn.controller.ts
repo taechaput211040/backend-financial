@@ -18,6 +18,7 @@ import { Members } from './member.entiry';
 import { WithdrawMemberDto } from 'src/Input/withdraw.member.dto';
 import { CutCreditDto } from 'src/Input/cut.credit.dto';
 import { v4 as uuidv4 } from 'uuid';
+import { BuyFeatureDto } from 'src/Input/buy.feature.dto';
 @Controller('api/MemberTurn')
 @SerializeOptions({ strategy: 'excludeAll' })
 export class MemberTurnController {
@@ -37,27 +38,27 @@ export class MemberTurnController {
         this.logger.log('getCreditV2 hit');
         const cacheName = `_getCreditV2_${username.toLowerCase()}`
 
-        // const value = await this.cacheManager.get(cacheName)
-        // if (value) return value
+        const value = await this.cacheManager.get(cacheName)
+        if (value) return value
 
         const member = await this.memberService.getMember(username)
-        if (!member) throw new NotFoundException()
+        if (!member) throw new NotFoundException('ไม่พบ username ในระบบ')
         if (member.sync) {
             //check turn V2
-         
-            const creditBalance = await this.memberTurnService.getBalanceV2(member)
-            
-            return {credit : creditBalance.balance, user:member.username.toUpperCase()}
-        } else {
-            // go sync turn and credit
-           
-           await this.memberTurnService.findmemberRico(member)
-            // await this.cacheManager.set(cacheName, member_rico, { ttl: null })
-          
 
             const creditBalance = await this.memberTurnService.getBalanceV2(member)
-            
-            return {credit : creditBalance.balance, user:member.username.toUpperCase()}
+
+            return { credit: creditBalance.balance, user: member.username.toUpperCase() }
+        } else {
+            // go sync turn and credit
+
+            await this.memberTurnService.findmemberRico(member)
+            // await this.cacheManager.set(cacheName, member_rico, { ttl: null })
+
+
+            const creditBalance = await this.memberTurnService.getBalanceV2(member)
+
+            return { credit: creditBalance.balance, user: member.username.toUpperCase() }
         }
 
     }
@@ -96,7 +97,7 @@ export class MemberTurnController {
         } else {
             // go sync turn and credit
             console.log('syncing')
-            member_turn_v2 = await this.memberTurnService.findmemberRicoSync(member,setting)
+            member_turn_v2 = await this.memberTurnService.findmemberRicoSync(member, setting)
 
             if (member_turn_v2.min_turn <= 0) {
                 return { message: "กรุณากรอกจำนวนเงินที่ต้องการถอน", turnStatus: false }
@@ -156,10 +157,10 @@ export class MemberTurnController {
 
             // go sync turn and credit
 
-            member_turn_v2 = await this.memberTurnService.findmemberRicoSync(member,setting)
+            member_turn_v2 = await this.memberTurnService.findmemberRicoSync(member, setting)
 
 
-            winlose = await this.memberTurnService.getWinlose(member)
+            winlose = await this.memberTurnService.getWinloseForSync(member)
 
             // $valids = $b->json()['validAmount'];
             // $outs = $b->json()['outstanding'];
@@ -207,12 +208,13 @@ export class MemberTurnController {
             //check turn V2
             const member_turn_v2 = await this.memberTurnService.getMemberTurn(username)
 
-            return {member:member,turn:member_turn_v2}
+            return { member: member, turn: member_turn_v2 }
         } else {
             // go sync turn and credit
+            await this.memberTurnService.syncMember(member)
             const member_rico = await this.memberTurnService.findmemberRico(member)
             await this.cacheManager.set(cacheName, member_rico, { ttl: null })
-            return {member:member,turn:member_rico}
+            return { member: member, turn: member_rico }
         }
 
         // const a = await this.websiteService.getWebInfoByHashAllData(input.hash)
@@ -259,6 +261,60 @@ export class MemberTurnController {
 
         // return await this.memberTurnService.saveOrUpdateManyMemberTurn(input)
     }
+    @Get('Auto/:username')
+    async getTurnAuto(
+        @Param('username') username: string
+    ) {
+        this.logger.log('getTurnAuto hit');
+        const cacheName = `_turn_auto${username.toLowerCase()}`
+
+        const value = await this.cacheManager.get(cacheName)
+        if (value) return value
+        this.logger.log(username);
+        const member = await this.memberService.getMember(username)
+        if (!member) throw new NotFoundException()
+        if (member.sync) {
+            //check turn V2
+            const member_turn_v2 = await this.memberTurnService.getMemberTurn(username)
+
+
+
+            const response = {
+                turn: member_turn_v2,
+                ip_data: await this.memberTurnService.getIPdata(member.username),
+                result: await this.memberTurnService.getBalanceV2(member),
+                winlose: await this.memberTurnService.getWinloseForSync(member)
+            }
+            await this.cacheManager.set(cacheName, response, { ttl: 5 })
+            return response
+        } else {
+            // go sync turn and credit
+            await this.memberTurnService.syncMember(member)
+            const member_turn_v2 = await this.memberTurnService.getMemberTurn(username)
+
+            const response = {
+                turn: member_turn_v2,
+                ip_data: await this.memberTurnService.getIPdata(member.username),
+                result: await this.memberTurnService.getBalanceV2(member),
+                winlose: await this.memberTurnService.getWinloseForSync(member)
+            }
+
+            await this.cacheManager.set(cacheName, response, { ttl: 5 })
+            return response
+        }
+
+        // const a = await this.websiteService.getWebInfoByHashAllData(input.hash)
+        // if (!a) throw new NotFoundException()
+
+        // const member = await this.memberService.getMember(input.username.toLocaleLowerCase())
+        // // if (member) throw new BadRequestException("Duplicate Username")
+        // input.username = input.username.toLocaleLowerCase() 
+
+
+        // return await this.memberTurnService.saveOrUpdateManyMemberTurn(input)
+    }
+
+
     @Post('Withdraw')
     async withdrawMember(
         @Body() input: WithdrawMemberDto
@@ -283,9 +339,9 @@ export class MemberTurnController {
 
         if (!member) throw new NotFoundException({ message: "ไม่พบข้อมูลยูสเซ่อร์", turnStatus: true })
         const setting = await this.memberTurnService.getSetting(member.company, member.agent)
-        if (!setting || setting.system_status == false ) throw new BadRequestException({ message: "เว็บปิดใช้งาน", turnStatus: true })
+        if (!setting || setting.system_status == false) throw new BadRequestException({ message: "เว็บปิดใช้งาน", turnStatus: true })
 
-      
+
         if (setting.wd_status == false) throw new BadRequestException({ message: "ระบบถอนปิดใช้งานชั่วคราว", turnStatus: true })
 
         await this.memberTurnService.checkIsCanwithdrawTodayFromSetting(member, setting, input.amount)
@@ -331,11 +387,133 @@ export class MemberTurnController {
 
 
             } else {
-                throw new BadRequestException({ message: "ท่านติดเทิร์นอยู่ ถอนไม่ได้", turnStatus: true })
+                await this.memberTurnService.syncMember(member)
+                throw new BadRequestException({ message: "กรุณา รีเฟรชหน้าเว็บ 1 ครั้ง เพื่ออัพเดทข้อมูล", turnStatus: true })
             }
 
         }
         throw new BadRequestException({ message: "กรุณาตรวจสอบ ยอดเทิร์นก่อนทำการถอน", turnStatus: true })
+        // $valids = $b->json()['validAmount'];
+        // $outs = $b->json()['outstanding'];
+
+
+
+
+    }
+
+    @Post('CutCreditV2')
+    async CutCreditV2(
+        @Body() input: WithdrawMemberDto
+    ) {
+        this.logger.log('CutCreditV2 hit');
+        // throw new NotFoundException({ message: "ไม่พบข้อมูลยูสเซ่อร์", turnStatus: true ,status:400})
+        const cacheName = `_withdraw_member_${input.username}_${input.amount.toString()}`
+
+        if (await this.cacheManager.get(cacheName)) return
+        await this.cacheManager.set(cacheName, 1, { ttl: 5 })
+
+
+        if (input.amount <= 0) throw new BadRequestException({ message: "ถอนไม่ได้ กรุณากรอกจำนวนเงินที่ต้องการถอน", turnStatus: true })
+        const value = await this.cacheManager.get('_member_info_' + input.username.toLocaleLowerCase());
+        let member: Members = null
+        if (value) {
+            member = plainToClass(Members, value)
+        } else {
+            member = await this.memberService.getMember(input.username)
+        }
+
+
+        if (!member) throw new NotFoundException({ message: "ไม่พบข้อมูลยูสเซ่อร์", turnStatus: true })
+        const setting = await this.memberTurnService.getSetting(member.company, member.agent)
+        if (!setting || setting.system_status == false) throw new BadRequestException({ message: "เว็บปิดใช้งาน", turnStatus: true })
+
+
+        if (setting.wd_status == false) throw new BadRequestException({ message: "ระบบถอนปิดใช้งานชั่วคราว", turnStatus: true })
+
+
+        console.log('synccccc', member.sync)
+
+        let member_turn_v2
+        if (member.sync) {
+            //check turn V2
+            member_turn_v2 = await this.memberTurnService.getMemberTurn(input.username)
+            // console.log(member_turn_v2)
+
+            const credit = await this.memberService.getCreditByDisplaynameV2(member, setting)
+            if (credit.balance < input.amount) throw new BadRequestException({ message: "ถอนไม่ได้ เครดิตปัจจุบันไม่พอ", turnStatus: true })
+            const result_withdraw: CutCreditDto = await this.memberService.cutCreditV2(input.amount, member, setting)
+            result_withdraw.type = 'common'
+            result_withdraw.withdraw_amount = input.amount
+            result_withdraw.remark = `รายการกดถอนแทนสมาชิก ${input.username} จำนวน ${result_withdraw.withdraw_amount} บาท โดย ${input.operator}`
+
+            //save withdrawlist
+            await this.memberService.sendWithdrawListManual(result_withdraw, member, input.operator)
+            return { message: "รายการแจ้งถอนสำเร็จ", turnStatus: false }
+            // do transfer if auto
+
+
+
+
+
+
+        }
+        throw new BadRequestException({ message: "กรุณาตรวจสอบ ยอดเทิร์นก่อนทำการถอน", turnStatus: true })
+        // $valids = $b->json()['validAmount'];
+        // $outs = $b->json()['outstanding'];
+
+
+
+
+    }
+    @Post('WheelBuy')
+    async cutCreditWheelBuyFeature(
+        @Body() input: BuyFeatureDto
+    ) {
+        this.logger.log('cutCreditWheelBuyFeature hit');
+        // throw new NotFoundException({ message: "ไม่พบข้อมูลยูสเซ่อร์", turnStatus: true ,status:400})
+        const cacheName = `_withdraw_member_Wheel_${input.username}_${input.amount.toString()}`
+
+        if (await this.cacheManager.get(cacheName)) return
+        await this.cacheManager.set(cacheName, 1, { ttl: 5 })
+
+
+        if (input.amount <= 0) throw new BadRequestException({ message: "invalid amount" })
+        const value = await this.cacheManager.get('_member_info_' + input.username.toLocaleLowerCase());
+        let member: Members = null
+        if (value) {
+            member = plainToClass(Members, value)
+        } else {
+            member = await this.memberService.getMember(input.username)
+        }
+
+
+        if (!member) throw new NotFoundException({ message: "ไม่พบข้อมูลยูสเซ่อร์", turnStatus: true })
+        const setting = await this.memberTurnService.getSetting(member.company, member.agent)
+        if (!setting || setting.system_status == false) throw new BadRequestException({ message: "เว็บปิดใช้งาน", turnStatus: true })
+
+
+        console.log("llll:", member.sync)
+        if (member.sync) {
+            //check turn V2
+            const credit = await this.memberService.getCreditByDisplaynameV2(member, setting)
+            console.log(credit)
+            if (credit.balance < input.amount) throw new BadRequestException("เครดิตปัจจุบันไม่เพียงพอ")
+            const result_withdraw: CutCreditDto = await this.memberService.cutCreditV2(input.amount, member, setting)
+            result_withdraw.type = 'wheel'
+            result_withdraw.withdraw_amount = input.amount
+            result_withdraw.remark = `รายการซื้อกงล้อจาก  ${input.username} จำนวน ${input.amount} เครดิต `
+            //save withdrawlist
+            await this.memberService.saveCutCreditRecord(result_withdraw, member.username)
+            return { message: 'Success deduct credit' }
+            // member_turn_v2 = await this.memberTurnService.getMemberTurn(input.username)
+            // console.log(member_turn_v2)
+
+
+        } else {
+            await this.memberTurnService.syncMember(member)
+            throw new BadRequestException({ message: "unSync" })
+        }
+
         // $valids = $b->json()['validAmount'];
         // $outs = $b->json()['outstanding'];
 
@@ -397,24 +575,44 @@ export class MemberTurnController {
 
     @Put()
     async updateTurn(
-        @Param('username') username: string,
+
         @Body() input: UpdateMemberTurnDto
     ) {
         this.logger.log('updateTurn hit');
-        const member_turn = await this.memberTurnService.getMemberTurn(input.username)
-        if (!member_turn) throw new NotFoundException()
+
+        let member = await this.memberService.getMember(input.username.toLocaleLowerCase())
+
+        if (!member) throw new NotFoundException()
+        await this.memberTurnService.saveUserTransaction(input.operator, 'UPDATE_TURN', `แก้ไขเทิร์นสมาชิก user: ${input.username}`, input, input.ip_operator, member.company, member.agent)
+        if (!member.sync) {
+
+            await this.memberTurnService.syncMember(member)
+            const member_turn = await this.memberTurnService.getMemberTurn(input.username)
+            if (!member_turn) throw new NotFoundException()
+            const new_turn = await this.memberTurnService.updateMemberTurn(member_turn, input)
+
+            return new_turn
+        } else {
+            const member_turn = await this.memberTurnService.getMemberTurn(input.username)
+            if (!member_turn) throw new NotFoundException()
+            const new_turn = await this.memberTurnService.updateMemberTurn(member_turn, input)
+
+            return new_turn
+        }
 
 
 
 
 
 
-        const new_turn = await this.memberTurnService.updateMemberTurn(member_turn, input)
 
 
 
 
-        return new_turn
+
+
+
+
         // const a = await this.websiteService.getWebInfoByHashAllData(input.hash)
         // if (!a) throw new NotFoundException()
 

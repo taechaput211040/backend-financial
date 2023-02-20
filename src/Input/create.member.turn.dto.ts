@@ -8,8 +8,8 @@ export class CreateMemberTurnDto {
     // require
 
  
-
-
+@IsOptional()
+id:string;
    
     @IsString()
     @IsOptional()
@@ -79,4 +79,10 @@ export class CreateMemberTurnDto {
     @IsOptional()
     wdable:boolean;
 
+
+     
+@IsOptional()
+operator:string;
+@IsOptional()
+ip_operator:string;
 } 

@@ -19,7 +19,9 @@ export class PageOptionsDto {
   @IsOptional()
   readonly page?: number = 1;
 
-
+  @IsString()
+  @IsOptional()
+  readonly username?: string;
  
   @IsString()
   @IsOptional()
@@ -34,7 +36,7 @@ export class PageOptionsDto {
   @Min(1)
   @Max(50)
   @IsOptional()
-  readonly take?: number = 10;
+  readonly take?: number = 40;
 
   @IsString()
   @IsOptional()

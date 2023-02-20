@@ -63,13 +63,28 @@ export class MemberService {
         const value = await this.cacheManager.get(cacheName)
         if (value) return plainToClass(Members, value)
         console.log('get _memberRepo_ :', username)
-        const member = await this.memberRepository.findOne({ where: { username: username }, loadEagerRelations: true });
+        const member = await this.memberRepository.findOne({ where: { username: username.toLowerCase() } });
 
-        await this.cacheManager.set(cacheName, member, { ttl: null })
+        if(member){
+            await this.cacheManager.set(cacheName, member, { ttl: null })
+        }
+      
 
         return member
 
     }
+ public async verifyMemberSCB(company: string, agent: string, fromBankRef: string , fromBank :string,name:string): Promise<Members[]>{
+if(fromBank == 'SCB' && name != 'null'){
+    console.log('scb')
+    return await this.memberRepository.find({ where: { company: company, agent: agent,name:name, scb_api_ref: fromBankRef } });
+} else {
+    console.log('other')
+    return await this.memberRepository.find({ where: { company: company, agent: agent, other_api_ref: fromBankRef } });
+}
+
+    
+
+ }
     public async verifyMember(company: string, agent: string, fromBankRef: string): Promise<Members[]> {
 
 
@@ -120,7 +135,23 @@ export class MemberService {
 
     public async getMemberPaginate(pageOptionsDto: PageOptionsDto, company: string, agent: string): Promise<PageDto<MemberAgentDto>> {
         // public async getMemberPaginate(pageOptionsDto: PageOptionsDto, company: string, agent: string) {
+        if(pageOptionsDto.username){
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company ,username:pageOptionsDto.username.toLowerCase()},
+                order: { created_at: 'DESC' },
+              
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
 
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
         if (pageOptionsDto.start && pageOptionsDto.end) {
             const [result, total] = await this.memberRepository.findAndCount({
                 where: { agent: agent, company: company, created_at: Between(pageOptionsDto.start, pageOptionsDto.end) },
@@ -132,7 +163,7 @@ export class MemberService {
 
 
             const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
-
+            console.log(pageMetaDto)
             return new PageDto(result, pageMetaDto);
 
         } else {
@@ -156,6 +187,7 @@ export class MemberService {
         }
 
     }
+   
     public async topupSmart(input: TopupSmartDto) {
         if (!input.amount || input.amount <= 0 || !input.username) throw new BadRequestException("invalid amount! or username!")
 
@@ -227,9 +259,46 @@ export class MemberService {
     public async updateMember(member: Members, input: UpdateMemberDto) {
 
 
+       
+        if (input.bankName == "KBANK") {
+            input.bankAccRef = `X-${input.bankAcc.slice(6)}` //Str::substr($bankAcc, 6);
+            input.scb_api_ref = `X${input.bankAcc.slice(6)}`
+            input.other_api_ref = `X${input.bankAcc.slice(4)}`
+        } else if (input.bankName == "TRUEWALLET") {
+            input.bankAccRef = input.phone
+            input.scb_api_ref = `X${input.bankAcc.slice(6)}`
+            input.other_api_ref = `X${input.bankAcc.slice(4)}`
+        } else if (input.bankName == "GSB") {
+            input.bankAccRef = `X${input.bankAcc.slice(6)}` // Str::substr($bankAcc, 6);
+            input.other_api_ref = `X${input.bankAcc.slice(6)}`
+            input.scb_api_ref = `X${input.bankAcc.slice(8)}`
+        } else if (input.bankName == "BAAC") {
+            input.bankAccRef = `X${input.bankAcc.slice(6)}` // Str::substr($bankAcc, 6);
+            input.other_api_ref = `X${input.bankAcc.slice(6)}`
+            input.scb_api_ref = `X${input.bankAcc.slice(8)}`
+        } else {
+            input.bankAccRef = `X${input.bankAcc.slice(4)}` // Str::substr($bankAcc, 4);
+            input.other_api_ref = `X${input.bankAcc.slice(4)}`
+            input.scb_api_ref = `X${input.bankAcc.slice(6)}`
+        }
+
+      
+       
+       
+      
         const members = await this.memberRepository.save({ ...member, ...input })
         this.logger.log('member saved');
+        const cacheName = `_memberRepo_${member.username.toLowerCase()}`
+        await this.cacheManager.del(cacheName)
+        return members
+    }
+    public async saveMember(member: Members) {
 
+
+        const members = await this.memberRepository.save(member)
+        this.logger.log('member saved');
+        const cacheName = `_memberRepo_${member.username.toLowerCase()}`
+        await this.cacheManager.del(cacheName)
         return members
     }
     public async updateMemberPassword(member: Members, input: ChangePasswordFrontendDto) {
@@ -246,6 +315,8 @@ export class MemberService {
         const members = await this.memberRepository.save(member)
         this.logger.log('member saved');
 
+        const cacheName = `_memberRepo_${member.username.toLowerCase()}`
+        await this.cacheManager.del(cacheName)
         return members
     }
 
@@ -255,8 +326,8 @@ export class MemberService {
 
             where: { phone: input.phone, agent: input.agent, company: input.company }
         })
-        
-       
+
+
         if (phone_check) throw new BadRequestException('เบอร์โทรศัพท์นี้ได้สมัครใช้งานแล้ว')
         console.log('checking bank acc')
         const bankAcc_check = await this.memberRepository.findOne({
@@ -277,34 +348,50 @@ export class MemberService {
         console.log('checking company bank')
         const company_bank_check = await this.checkCompanyBank(input)
         if (company_bank_check) throw new BadRequestException('เลขบัญชีซ้ำกับในระบบ')
-      
-      
+
+
 
     }
-    public async generateMember(input:CreateMemberDto,setting:Setting){
+
+    public async generateMember(input: CreateMemberDto, setting: Setting) {
         input.username = await this.generateUsername(input)
         if (input.bankName == "KBANK") {
             input.bankAccRef = `X-${input.bankAcc.slice(6)}` //Str::substr($bankAcc, 6);
-        } else if (input.bankName  == "TRUEWALLET") {
-            input.bankAccRef   = input.phone
-        } else if (input.bankName  == "GSB") {
-            input.bankAccRef  = `X${input.bankAcc.slice(6)}` // Str::substr($bankAcc, 6);
-        } else if (input.bankName  == "BAAC") {
+            input.scb_api_ref = `X${input.bankAcc.slice(6)}`
+            input.other_api_ref = `X${input.bankAcc.slice(4)}`
+        } else if (input.bankName == "TRUEWALLET") {
+            input.bankAccRef = input.phone
+            input.scb_api_ref = `X${input.bankAcc.slice(6)}`
+            input.other_api_ref = `X${input.bankAcc.slice(4)}`
+        } else if (input.bankName == "GSB") {
             input.bankAccRef = `X${input.bankAcc.slice(6)}` // Str::substr($bankAcc, 6);
+            input.other_api_ref = `X${input.bankAcc.slice(6)}`
+            input.scb_api_ref = `X${input.bankAcc.slice(8)}`
+        } else if (input.bankName == "BAAC") {
+            input.bankAccRef = `X${input.bankAcc.slice(6)}` // Str::substr($bankAcc, 6);
+            input.other_api_ref = `X${input.bankAcc.slice(6)}`
+            input.scb_api_ref = `X${input.bankAcc.slice(8)}`
         } else {
-            input.bankAccRef  = `X${input.bankAcc.slice(4)}` // Str::substr($bankAcc, 4);
+            input.bankAccRef = `X${input.bankAcc.slice(4)}` // Str::substr($bankAcc, 4);
+            input.other_api_ref = `X${input.bankAcc.slice(4)}`
+            input.scb_api_ref = `X${input.bankAcc.slice(6)}`
         }
+
+        input.hash = setting.hash
+        input.agent = setting.agent_username.toLowerCase()
+        input.company = setting.company.toLowerCase()
         input.sync = true
-      
+        console.log(input)
         const member = await this.memberRepository.save(input)
         return member
     }
-    private async generateUsername(input:CreateMemberDto):Promise<string>{
+    
+    private async generateUsername(input: CreateMemberDto): Promise<string> {
         let username_temp = `${input.agent.toLowerCase()}${input.phone.slice(3)}`
         for (let index = 3; index > 0; index--) {
-           
-            const member_temp = await this.memberRepository.findOne({where:{username:username_temp}})
-            if(member_temp){
+
+            const member_temp = await this.memberRepository.findOne({ where: { username: username_temp } })
+            if (member_temp) {
                 username_temp = `${input.agent.toLowerCase()}${input.phone.slice(index)}`
             } else {
                 return username_temp
@@ -388,10 +475,14 @@ export class MemberService {
         const url = `${process.env.SMART_URL_OLD}/api/v1/member/${member.member_uuid}/reset-password`
         try {
             const res = await this.httpService.post(url, data, { headers: headersRequest }).toPromise()
+
+            console.log('changePasswordSmart success')
             return res.data
 
 
         } catch (error) {
+            console.log('changePasswordSmart error')
+            console.log(error)
             throw new BadRequestException(error.response.data)
         }
 
@@ -460,6 +551,33 @@ export class MemberService {
             throw new BadRequestException(error.response.data)
         }
     }
+
+    public async saveCutCreditRecord(credit_result: CutCreditDto, username: string) {
+
+        const url = `${process.env.ALL_WHEEL}/api/Wheel/admin/BuyFeature`
+
+        const body = {
+            username: username.toLowerCase(),
+            result: credit_result
+        }
+        try {
+            console.log('sending CutCreditRecord', username)
+
+            const res = await this.httpService.post(url, body).toPromise()
+
+            //    console.log("withdrawV2:",res.data)
+
+
+
+            return res.data
+
+
+        } catch (error) {
+            console.log(error.response.data)
+            return null
+            throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
+        }
+    }
     public async getCreditByDisplaynameV2(member: Members, setting: Setting): Promise<CreditV2Dto> {
         const headersRequest = {
             'Content-Type': 'application/json', // afaik this one is not needed
@@ -524,8 +642,9 @@ export class MemberService {
 
         const body = {
             username: member.username,
-            amount: credit
+            amount: Number(credit)
         }
+        console.log(body)
         try {
 
             const res = await this.httpService.post(url, body, { headers: headersRequest }).toPromise()
@@ -542,7 +661,7 @@ export class MemberService {
     public async sendWithdrawList(credit_result: CutCreditDto, member: Members) {
 
         const url = `${process.env.ALL_WITHDRAW}/api/Withdraw/Member`
-
+        member.wd_count++
         const body = {
             member: member,
             result: credit_result
@@ -553,7 +672,7 @@ export class MemberService {
             const res = await this.httpService.post(url, body).toPromise()
 
             //    console.log("withdrawV2:",res.data)
-            member.wd_count++
+           
             await this.saveMemberEntity(member)
 
             return res.data
@@ -564,7 +683,33 @@ export class MemberService {
             throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
         }
     }
+    public async sendWithdrawListManual(credit_result: CutCreditDto, member: Members,operator:string) {
 
+        const url = `${process.env.ALL_WITHDRAW}/api/Withdraw/Member/Manual`
+        member.wd_count++
+        const body = {
+            member: member,
+            result: credit_result,
+            operator:operator
+        }
+        try {
+            console.log('sending sendWithdrawListManual', member.username)
+
+            const res = await this.httpService.post(url, body).toPromise()
+
+            //    console.log("withdrawV2:",res.data)
+           
+            await this.saveMemberEntity(member)
+
+            return res.data
+
+
+        } catch (error) {
+            console.log(error.response.data)
+            throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
+        }
+    }
+    
     private async withdrawV2(credit: number, member: Members, setting: Setting) {
         const headersRequest = {
             'Content-Type': 'application/json', // afaik this one is not needed

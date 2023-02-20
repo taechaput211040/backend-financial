@@ -15,5 +15,6 @@ export class LockUserDto {
     @IsBoolean()
     status: boolean;
 
-   
+    @IsString()
+    operator: string;
 } 

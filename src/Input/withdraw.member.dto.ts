@@ -9,6 +9,8 @@ export class WithdrawMemberDto {
   @ApiProperty({ required: true })
   @IsNumber()
   amount: number;
+@IsOptional()
+  operator:string;
 
   
 }
