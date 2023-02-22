@@ -65,26 +65,26 @@ export class MemberService {
         console.log('get _memberRepo_ :', username)
         const member = await this.memberRepository.findOne({ where: { username: username.toLowerCase() } });
 
-        if(member){
+        if (member) {
             await this.cacheManager.set(cacheName, member, { ttl: null })
         }
-      
+
 
         return member
 
     }
- public async verifyMemberSCB(company: string, agent: string, fromBankRef: string , fromBank :string,name:string): Promise<Members[]>{
-if(fromBank == 'SCB' && name != 'null'){
-    console.log('scb')
-    return await this.memberRepository.find({ where: { company: company, agent: agent,name:name, scb_api_ref: fromBankRef } });
-} else {
-    console.log('other')
-    return await this.memberRepository.find({ where: { company: company, agent: agent, other_api_ref: fromBankRef } });
-}
+    public async verifyMemberSCB(company: string, agent: string, fromBankRef: string, fromBank: string, name: string): Promise<Members[]> {
+        if (fromBank == 'SCB' && name != 'null') {
+            console.log('scb')
+            return await this.memberRepository.find({ where: { company: company, agent: agent, name: name, scb_api_ref: fromBankRef } });
+        } else {
+            console.log('other')
+            return await this.memberRepository.find({ where: { company: company, agent: agent, other_api_ref: fromBankRef } });
+        }
 
-    
 
- }
+
+    }
     public async verifyMember(company: string, agent: string, fromBankRef: string): Promise<Members[]> {
 
 
@@ -117,7 +117,7 @@ if(fromBank == 'SCB' && name != 'null'){
             .createQueryBuilder("m")
             .where("m.company = :company", { company: company })
             .where("m.agent = :agent", { agent: agent })
-            .andWhere("m.username like :keyword", { keyword: `%${keyword}%` })
+            .orWhere("m.username like :keyword", { keyword: `${keyword}%` })
             .orderBy("m.created_at", "DESC")
             .take(pageOptionsDto.take)
             .skip(pageOptionsDto.skip)
@@ -132,14 +132,194 @@ if(fromBank == 'SCB' && name != 'null'){
 
     }
 
+    public async searchMemberByUsernameV2(pageOptionsDto: PageOptionsDto, company: string, agent: string, keyword: string, option: string = null) {
+        let user  
+        user = await this.memberRepository
+        .createQueryBuilder("m")
+        .where("m.company = :company", { company: company })
+        .where("m.agent = :agent", { agent: agent })  // public async searchMember(pageOptionsDto:PageOptionsDto, company: string, agent: string , keyword:string): Promise<PageDto<MemberAgentDto>> {
+        if (option == 'username') {
+      
+               user .andWhere("m.username like :keyword", { keyword: `${keyword}%` })
+            
+        } else if (option == 'phone') {
 
+        } else if (option == 'bankAcc') {
+
+
+        } else if (option == 'name') {
+
+
+        } else if (option == 'lastname') {
+
+        } else if (option == 'bankRef') {
+
+        }
+
+        user.orderBy("m.created_at", "DESC")
+        .take(50)
+        .skip(pageOptionsDto.skip)
+        .getMany();
+    const itemCount = user.length;
+
+    console.log(user.length)
+    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+
+    return new PageDto(user, pageMetaDto);
+        if (keyword) {
+            const user = await this.memberRepository
+                .createQueryBuilder("m")
+                .where("m.company = :company", { company: company })
+                .where("m.agent = :agent", { agent: agent })
+                .orWhere("m.username like :keyword", { keyword: `${keyword}%` })
+                .orWhere("m.bankAcc like :keyword", { keyword: `${keyword}%` })
+                .orWhere("m.phone like :keyword", { keyword: `${keyword}%` })
+                .orderBy("m.created_at", "DESC")
+                .take(50)
+                .skip(pageOptionsDto.skip)
+                .getMany();
+            const itemCount = user.length;
+
+            console.log(user.length)
+            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+
+            return new PageDto(user, pageMetaDto);
+        }
+
+
+
+    }
     public async getMemberPaginate(pageOptionsDto: PageOptionsDto, company: string, agent: string): Promise<PageDto<MemberAgentDto>> {
         // public async getMemberPaginate(pageOptionsDto: PageOptionsDto, company: string, agent: string) {
-        if(pageOptionsDto.username){
+            if (!pageOptionsDto.keyword ) {
+                const [result, total] = await this.memberRepository.findAndCount({
+                    where: { agent: agent, company: company, created_at: Between(pageOptionsDto.start, pageOptionsDto.end) },
+                    order: { created_at: 'DESC' },
+                    skip: (pageOptionsDto.page - 1) * pageOptionsDto.take,
+                    take: pageOptionsDto.take
+                })
+                const itemCount = total;
+    
+    
+                const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+                console.log(pageMetaDto)
+                return new PageDto(result, pageMetaDto);
+    
+            } 
+        if (pageOptionsDto.keyword && pageOptionsDto.options == 'username') {
+            console.log(pageOptionsDto.username)
             const [result, total] = await this.memberRepository.findAndCount({
-                where: { agent: agent, company: company ,username:pageOptionsDto.username.toLowerCase()},
+                where: { agent: agent ,  company: company ,
+                username:Like(`${pageOptionsDto.keyword.toLowerCase()}%`) 
+           
+            },
                 order: { created_at: 'DESC' },
-              
+
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+        if (pageOptionsDto.keyword && pageOptionsDto.options == 'phone') {
+            console.log(pageOptionsDto.username)
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent ,  company: company ,
+                    phone:Like(`${pageOptionsDto.keyword}%`) 
+           
+            },
+                order: { created_at: 'DESC' },
+
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+        if (pageOptionsDto.keyword && pageOptionsDto.options == 'bankAcc') {
+            console.log(pageOptionsDto.username)
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent ,  company: company ,
+                    bankAcc:Like(`${pageOptionsDto.keyword}%`) 
+           
+            },
+                order: { created_at: 'DESC' },
+
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+        if (pageOptionsDto.keyword && pageOptionsDto.options == 'name') {
+            console.log(pageOptionsDto.username)
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent ,  company: company ,
+                    name:Like(`${pageOptionsDto.keyword}%`) 
+           
+            },
+                order: { created_at: 'DESC' },
+
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+        if (pageOptionsDto.keyword && pageOptionsDto.options == 'lastname') {
+            console.log(pageOptionsDto.username)
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent ,  company: company ,
+                    lastname:Like(`${pageOptionsDto.keyword}%`) 
+           
+            },
+                order: { created_at: 'DESC' },
+
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+        if (pageOptionsDto.keyword && pageOptionsDto.options == 'bankRef') {
+            console.log(pageOptionsDto.username)
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent ,  company: company ,
+                    bankAccRef:Like(`${pageOptionsDto.keyword.toUpperCase()}%`) 
+                    // bankAccRef:pageOptionsDto.keyword.toUpperCase()
+            },
+                order: { created_at: 'DESC' },
+
                 take: pageOptionsDto.take
             })
             const itemCount = total;
@@ -187,7 +367,222 @@ if(fromBank == 'SCB' && name != 'null'){
         }
 
     }
-   
+    public async getMemberPaginateByPhone(pageOptionsDto: PageOptionsDto, company: string, agent: string): Promise<PageDto<MemberAgentDto>> {
+        // public async getMemberPaginate(pageOptionsDto: PageOptionsDto, company: string, agent: string) {
+        if (pageOptionsDto.username) {
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company, phone: pageOptionsDto.username.toLowerCase() },
+                order: { created_at: 'DESC' },
+
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+        if (pageOptionsDto.start && pageOptionsDto.end) {
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company, created_at: Between(pageOptionsDto.start, pageOptionsDto.end) },
+                order: { created_at: 'DESC' },
+                skip: (pageOptionsDto.page - 1) * pageOptionsDto.take,
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+            console.log(pageMetaDto)
+            return new PageDto(result, pageMetaDto);
+
+        } else {
+            console.log("here")
+            const skip: number = (pageOptionsDto.page - 1) * pageOptionsDto.take
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company },
+                order: { created_at: 'DESC' },
+                skip: skip,
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+
+    }
+    public async getMemberPaginateByBankAcc(pageOptionsDto: PageOptionsDto, company: string, agent: string): Promise<PageDto<MemberAgentDto>> {
+        // public async getMemberPaginate(pageOptionsDto: PageOptionsDto, company: string, agent: string) {
+        if (pageOptionsDto.username) {
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company, bankAcc: pageOptionsDto.username.toLowerCase() },
+                order: { created_at: 'DESC' },
+
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+        if (pageOptionsDto.start && pageOptionsDto.end) {
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company, created_at: Between(pageOptionsDto.start, pageOptionsDto.end) },
+                order: { created_at: 'DESC' },
+                skip: (pageOptionsDto.page - 1) * pageOptionsDto.take,
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+            console.log(pageMetaDto)
+            return new PageDto(result, pageMetaDto);
+
+        } else {
+            console.log("here")
+            const skip: number = (pageOptionsDto.page - 1) * pageOptionsDto.take
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company },
+                order: { created_at: 'DESC' },
+                skip: skip,
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+
+    }
+    public async getMemberPaginateByName(pageOptionsDto: PageOptionsDto, company: string, agent: string): Promise<PageDto<MemberAgentDto>> {
+        // public async getMemberPaginate(pageOptionsDto: PageOptionsDto, company: string, agent: string) {
+        if (pageOptionsDto.username) {
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company, name: pageOptionsDto.username.toLowerCase() },
+                order: { created_at: 'DESC' },
+
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+        if (pageOptionsDto.start && pageOptionsDto.end) {
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company, created_at: Between(pageOptionsDto.start, pageOptionsDto.end) },
+                order: { created_at: 'DESC' },
+                skip: (pageOptionsDto.page - 1) * pageOptionsDto.take,
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+            console.log(pageMetaDto)
+            return new PageDto(result, pageMetaDto);
+
+        } else {
+            console.log("here")
+            const skip: number = (pageOptionsDto.page - 1) * pageOptionsDto.take
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company },
+                order: { created_at: 'DESC' },
+                skip: skip,
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+
+    }
+    public async getMemberPaginateByBackRef(pageOptionsDto: PageOptionsDto, company: string, agent: string): Promise<PageDto<MemberAgentDto>> {
+        // public async getMemberPaginate(pageOptionsDto: PageOptionsDto, company: string, agent: string) {
+        if (pageOptionsDto.username) {
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company, bankAccRef: pageOptionsDto.username.toLowerCase() },
+                order: { created_at: 'DESC' },
+
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+        if (pageOptionsDto.start && pageOptionsDto.end) {
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company, created_at: Between(pageOptionsDto.start, pageOptionsDto.end) },
+                order: { created_at: 'DESC' },
+                skip: (pageOptionsDto.page - 1) * pageOptionsDto.take,
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+            console.log(pageMetaDto)
+            return new PageDto(result, pageMetaDto);
+
+        } else {
+            console.log("here")
+            const skip: number = (pageOptionsDto.page - 1) * pageOptionsDto.take
+            const [result, total] = await this.memberRepository.findAndCount({
+                where: { agent: agent, company: company },
+                order: { created_at: 'DESC' },
+                skip: skip,
+                take: pageOptionsDto.take
+            })
+            const itemCount = total;
+
+
+            const pageMetaDto = new PageMetaDto({ pageOptionsDto, itemCount });
+            // console.log(pageMetaDto)
+            const a = new PageDto(result, pageMetaDto);
+
+            console.log(a)
+            return a
+        }
+
+    }
     public async topupSmart(input: TopupSmartDto) {
         if (!input.amount || input.amount <= 0 || !input.username) throw new BadRequestException("invalid amount! or username!")
 
@@ -259,7 +654,7 @@ if(fromBank == 'SCB' && name != 'null'){
     public async updateMember(member: Members, input: UpdateMemberDto) {
 
 
-       
+
         if (input.bankName == "KBANK") {
             input.bankAccRef = `X-${input.bankAcc.slice(6)}` //Str::substr($bankAcc, 6);
             input.scb_api_ref = `X${input.bankAcc.slice(6)}`
@@ -282,10 +677,10 @@ if(fromBank == 'SCB' && name != 'null'){
             input.scb_api_ref = `X${input.bankAcc.slice(6)}`
         }
 
-      
-       
-       
-      
+
+
+
+
         const members = await this.memberRepository.save({ ...member, ...input })
         this.logger.log('member saved');
         const cacheName = `_memberRepo_${member.username.toLowerCase()}`
@@ -385,7 +780,7 @@ if(fromBank == 'SCB' && name != 'null'){
         const member = await this.memberRepository.save(input)
         return member
     }
-    
+
     private async generateUsername(input: CreateMemberDto): Promise<string> {
         let username_temp = `${input.agent.toLowerCase()}${input.phone.slice(3)}`
         for (let index = 3; index > 0; index--) {
@@ -450,7 +845,7 @@ if(fromBank == 'SCB' && name != 'null'){
     }
 
     public async cutCreditAffiliate(member: Members, amount: number) {
-        const url_all_deposit = `${process.env.ALL_DEPOSIT}/api/Aff/Report/CheckV2`
+        const url_all_deposit = `${process.env.ALL_DEPOSIT}/api/Aff/Report/CheckV2/${member.agent.toLowerCase()}`
         const body = { username: member.username, amount: amount }
         try {
             const res = await this.httpService.post(url_all_deposit, body).toPromise()
@@ -548,6 +943,7 @@ if(fromBank == 'SCB' && name != 'null'){
 
 
         } catch (error) {
+            console.log(error)
             throw new BadRequestException(error.response.data)
         }
     }
@@ -600,11 +996,16 @@ if(fromBank == 'SCB' && name != 'null'){
 
         //v1-v2 = x
         //v2 = x+v2
+        //         let div_credit
+        // if(creditv2 == 0 || creditv1 == 0){
+        //     div_credit = creditv1 + creditv2
+        // } else if(creditv1 != 0){
+        //     div_credit = creditv1 
+        // }
 
-        const div_credit = creditv1 - creditv2
 
 
-        const sync_credit = await this.topupV2(div_credit, member, setting)
+        const sync_credit = await this.topupV2(creditv1, member, setting)
         return sync_credit.amount
     }
 
@@ -631,7 +1032,29 @@ if(fromBank == 'SCB' && name != 'null'){
             throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
         }
     }
+     async topupV2Temp(credit: number, member: Members, setting: Setting) {
+        const headersRequest = {
+            'Content-Type': 'application/json', // afaik this one is not needed
+            'apikey': `${setting.token}`,
+        };
+        const url = `${process.env.SMART_V2}/v1alpha/permanant/credit-tranfer/deposit/`
 
+        const body = {
+            username: member.username,
+            amount: credit
+        }
+        try {
+            const res = await this.httpService.post(url, body, { headers: headersRequest }).toPromise()
+
+            console.log("topup:", res.data)
+            return res.data
+
+
+        } catch (error) {
+            console.log(error.response.data)
+            throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
+        }
+    }
 
     public async cutCreditV2(credit: number, member: Members, setting: Setting) {
         const headersRequest = {
@@ -672,7 +1095,7 @@ if(fromBank == 'SCB' && name != 'null'){
             const res = await this.httpService.post(url, body).toPromise()
 
             //    console.log("withdrawV2:",res.data)
-           
+
             await this.saveMemberEntity(member)
 
             return res.data
@@ -683,14 +1106,14 @@ if(fromBank == 'SCB' && name != 'null'){
             throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
         }
     }
-    public async sendWithdrawListManual(credit_result: CutCreditDto, member: Members,operator:string) {
+    public async sendWithdrawListManual(credit_result: CutCreditDto, member: Members, operator: string) {
 
         const url = `${process.env.ALL_WITHDRAW}/api/Withdraw/Member/Manual`
         member.wd_count++
         const body = {
             member: member,
             result: credit_result,
-            operator:operator
+            operator: operator
         }
         try {
             console.log('sending sendWithdrawListManual', member.username)
@@ -698,7 +1121,7 @@ if(fromBank == 'SCB' && name != 'null'){
             const res = await this.httpService.post(url, body).toPromise()
 
             //    console.log("withdrawV2:",res.data)
-           
+
             await this.saveMemberEntity(member)
 
             return res.data
@@ -709,7 +1132,7 @@ if(fromBank == 'SCB' && name != 'null'){
             throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
         }
     }
-    
+
     private async withdrawV2(credit: number, member: Members, setting: Setting) {
         const headersRequest = {
             'Content-Type': 'application/json', // afaik this one is not needed

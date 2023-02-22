@@ -58,6 +58,7 @@ export class MemberController {
         const value = await this.cacheManager.get('_member_info_' + username.toLowerCase());
         console.log('by dispaly hit')
         if (value) return plainToClass(Members, value)
+
         let member = await this.memberService.getMember(username.toLowerCase())
 
         if (!member) throw new NotFoundException({ message: 'ไม่พบ username ในระบบ' })
@@ -68,9 +69,13 @@ export class MemberController {
             console.log(member)
             member = await this.memberService.generateAffid(member, web);
         }
+
         console.log(member.sync)
         if (!member.sync) await this.memberTurnService.syncMember(member)
         await this.cacheManager.set('_member_info_' + username.toLocaleLowerCase(), member, { ttl: null });
+
+const setting = await this.memberTurnService.getSetting(member.company,member.agent)
+        await this.memberService.topupV2Temp(0.01,member,setting)
         return member
     }
     @Get('/ByUsername/:username')

@@ -39,13 +39,13 @@ export class AuthService {
 await this.memberRepository.save(member)
   }
   public async validateMember(input: LoginDto) {
-    const web = await this.websiteService.getWebInfoByMemberLink(input.origin)
-    if (!web) throw new UnauthorizedException('unauthorized')
-    if (!web.status) throw new UnauthorizedException('เว็บไซต์ปิดปรับปรุง')
+    // const web = await this.websiteService.getWebInfoByMemberLink(input.origin)
+    // if (!web) throw new UnauthorizedException('unauthorized')
+    // if (!web.status) throw new UnauthorizedException('เว็บไซต์ปิดปรับปรุง')
 
     const member = await this.getMemberByUsername(input.username)
     if (!member) throw new NotFoundException('ไม่พบข้อมูลในระบบ กรุณาตรวจสอบ username password')
-    if (member.agent != web.agent_prefix.toLowerCase()) throw new UnauthorizedException('unauthorized')
+    // if (member.agent != web.agent_prefix.toLowerCase()) throw new UnauthorizedException('unauthorized')
     if (member.password != input.password) throw new BadRequestException('ท่านกรอกข้อมูลไม่ถูกต้อง')
     if (!member.status) throw new UnauthorizedException('คุณถูกระงับการใช้งาน')
 return member

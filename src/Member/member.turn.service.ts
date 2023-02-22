@@ -2,6 +2,7 @@ import { BadRequestException, HttpException, HttpService, Injectable, Logger, No
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import * as dayjs from 'dayjs';
 import { Between, Like, Repository, SelectQueryBuilder } from 'typeorm';
 import { Members } from './member.entiry';
 import { Cache } from "cache-manager";
@@ -44,7 +45,7 @@ export class MemberTurnService {
             let winlose
 
             // go sync turn and credit
-
+console.log('s1')
             member_turn_v2 = await this.findmemberRicoSync(member, setting)
 
 
@@ -89,6 +90,8 @@ export class MemberTurnService {
             await this.cacheManager.set(cacheName, turn, { ttl: null })
 
 
+        } else {
+            return null
         }
         return turn
 
@@ -116,7 +119,13 @@ export class MemberTurnService {
 
 
     }
-
+async saveMemberTurn(member_turn:MemberTurn){
+    const cacheName = `_turn_${member_turn.username.toLowerCase()}`
+    const cacheName_with_turn = `_member_with_turn_${member_turn.username.toLowerCase()}`
+    await this.cacheManager.del(cacheName_with_turn)
+    await this.cacheManager.del(cacheName)
+    return await this.memberTurnRepository.save(member_turn)
+}
     public async saveOrUpdateManyMemberTurn(input: CreateMemberTurnDto[]) {
 
         // return await this.memberTurnRepository.findOne();
@@ -222,17 +231,19 @@ export class MemberTurnService {
     }
     async findmemberRicoSync(member: Members, setting: Setting) {
 
-
+// console.log(query_get_username)
         const query_get_username
             = ` 
         SELECT * FROM ${setting.mysql_db_name}.members where username = '${member.username}' ;`
 
-
+   
 
         let rico_member = await this.ricoRepo.query(query_get_username)
 
-
+       
         const rico_member_turn = await this.getRicoMemberTurn(rico_member[0], setting)
+
+   
         if (rico_member_turn.length == 0) {
             const current_credit = await this.syncMemberCreditToV2(member, setting, rico_member)
             return await this.createTurnV2(member, setting, current_credit)
@@ -263,24 +274,31 @@ export class MemberTurnService {
             } catch (error) {
                 console.log('deposit_url error :', error)
                 console.log(error.response.data)
-                throw new BadRequestException({ message: "พบข้อผิดพลาด กรุณาลองใหม่", turnStatus: true })
+                deposit = null
             }
 
-
+let start
+let end
+            if(deposit){
+                 start = moment(deposit.created_at).format()
+                 end = moment().format()
+            } else{
+                start = moment().startOf('day').format()
+                 end = moment().endOf('day').format()
+            }
             // get from all winlose
-            const start = moment(deposit.created_at).format()
-            const end = moment().format()
+        
 
 
             const url_all_winlose = `${process.env.ALL_WINLOSE}/api/Realtime/GetWinlose/${member.username}/${start}/(${end})`
-
+console.log("adsda",url_all_winlose)
             try {
                 const allwinlose = await this.httpService.get(url_all_winlose).toPromise()
                 // console.log(allwinlose.data)
                 console.log('allwinlose pass :', allwinlose.data)
                 return allwinlose.data
             } catch (error) {
-                console.log('allwinlose error :', error)
+                console.log('allwinlose error :')
                 console.log(error.response.data)
                 throw new BadRequestException({ message: "พบข้อผิดพลาด กรุณาลองใหม่", turnStatus: true })
             }
@@ -305,7 +323,7 @@ export class MemberTurnService {
         if (!member.lastest_dpref) {
 
 
-            start = moment().format()
+            start =dayjs().format("YYYY-MM-DD HH:mm:ss")
 
         } else {
             // get start cal time from all deposit
@@ -319,21 +337,28 @@ export class MemberTurnService {
                 console.log('deposit_url pass :', result.data)
                 deposit = result.data
             } catch (error) {
-                console.log('deposit_url error :', error)
-                console.log(error.response.data)
-                throw new BadRequestException({ message: "พบข้อผิดพลาด กรุณาลองใหม่", turnStatus: true })
+                console.log('deposit_url error :')
+                console.log(error.response.data
+                    )
+                    deposit = null
+                // throw new BadRequestException({ message: "พบข้อผิดพลาด กรุณาลองใหม่", turnStatus: true })
             }
 
-            start = moment(deposit.created_at).format()
+            if(deposit){
+                start = dayjs(deposit.created_at).format("YYYY-MM-DD HH:mm:ss") 
+            } else {
+                start = dayjs().startOf('day').format("YYYY-MM-DD HH:mm:ss") 
+            }
+          
         }
 
         // get from all winlose
 
-        const end = moment().format()
+        const end = dayjs().format("YYYY-MM-DD HH:mm:ss") 
 
 
-        const url_all_winlose = `${process.env.ALL_WINLOSE}/api/Realtime/GetWinlose/${member.username}/${start}/(${end})`
-
+        const url_all_winlose = `${process.env.ALL_WINLOSE}/api/Realtime/GetWinlose/${member.username}/${start}/${end}`
+console.log(url_all_winlose)
         try {
             const allwinlose = await this.httpService.get(url_all_winlose).toPromise()
             // console.log(allwinlose.data)
@@ -360,12 +385,12 @@ export class MemberTurnService {
 
         if (setting.wdlimitcredit > 0) {
 
-            if (amount_and_count.count == setting.wdlimitTime) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ เกินขีดจำกัดยอดถอนต่อวัน, สามารถ ถอนได้  ${setting.wdlimitTime}  ครั้ง ต่อวัน`, turnStatus: true })
+            if (Number(amount_and_count.count) == Number(setting.wdlimitTime)) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ เกินขีดจำกัดยอดถอนต่อวัน, สามารถ ถอนได้  ${setting.wdlimitTime}  ครั้ง ต่อวัน`, turnStatus: true })
 
-            if (amount_and_count.amount > setting.wdlimitcredit) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ เกินขีดจำกัดยอดถอนต่อวัน, สามารถ ถอนได้  ${setting.wdlimitcredit}  บาท ต่อวัน`, turnStatus: true })
-            if ((amount_and_count.amount + amount) > setting.wdlimitcredit) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ เกินขีดจำกัดยอดถอนต่อวัน, สามารถ ถอนได้  ${setting.wdlimitcredit}  บาท ต่อวัน วันนี้ท่านถอนไปแล้ว ${amount_and_count.amount} บาท`, turnStatus: true })
-            if (amount > 0) {
-                if (amount < setting.least_wd_credits) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ ยอดถอนขั้นต่ำ  ${setting.least_wd_credits}  บาท `, turnStatus: true })
+            if (Number(amount_and_count.amount) > Number(setting.wdlimitcredit)) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ เกินขีดจำกัดยอดถอนต่อวัน, สามารถ ถอนได้  ${setting.wdlimitcredit}  บาท ต่อวัน`, turnStatus: true })
+            if ((Number(amount_and_count.amount) + Number(amount)) > Number(setting.wdlimitcredit)) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ เกินขีดจำกัดยอดถอนต่อวัน, สามารถ ถอนได้  ${setting.wdlimitcredit}  บาท ต่อวัน วันนี้ท่านถอนไปแล้ว ${amount_and_count.amount} บาท`, turnStatus: true })
+            if (Number(amount)> 0) {
+                if (Number(amount) < Number(setting.least_wd_credits)) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ ยอดถอนขั้นต่ำ  ${setting.least_wd_credits}  บาท `, turnStatus: true })
             }
         }
 
@@ -435,6 +460,7 @@ export class MemberTurnService {
     }
     async syncMemberCreditToV2(member: Members, setting: Setting, rico_member: any) {
         //get credit v1
+      
         const credit = await this.memberService.getCreditByDisplayname(member)
         console.log("creditV1:", credit.credit)
 

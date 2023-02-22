@@ -22,6 +22,12 @@ export class PageOptionsDto {
   @IsString()
   @IsOptional()
   readonly username?: string;
+  @IsString()
+  @IsOptional()
+  readonly keyword?: string;
+  @IsString()
+  @IsOptional()
+  readonly options?: string;
  
   @IsString()
   @IsOptional()

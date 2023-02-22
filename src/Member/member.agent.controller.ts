@@ -62,9 +62,26 @@ export class MemberAgentController {
         @Param('agent') agent: string,
         @Query() pageOptionsDto: PageOptionsDto
     ) {
-        return await this.memberService.searchMemberByUsername(pageOptionsDto, company.toLowerCase(), agent.toLowerCase(), keyword.toLowerCase().trim())
+        return await this.memberService.searchMemberByUsernameV2(pageOptionsDto, company.toLowerCase(), agent.toLowerCase(), keyword.toLowerCase().trim())
     }
- 
+    @Get('/SubScribeOption/:company/:agent')
+    @UseInterceptors(ClassSerializerInterceptor)
+    async getMemberPaginateoption(
+        @Param('company') company: string,
+        @Param('agent') agent: string,
+      
+
+        @Query() pageOptionsDto: PageOptionsDto
+    ) {
+        console.log(pageOptionsDto)
+        let member = await this.memberService.getMemberPaginate(pageOptionsDto, company.toLocaleLowerCase(), agent.toLowerCase())
+      
+     
+                return member
+     
+      
+    }
+
     @Get('/SubScribe/:company/:agent')
     @UseInterceptors(ClassSerializerInterceptor)
     async getMemberPaginate(
@@ -74,7 +91,8 @@ export class MemberAgentController {
         @Query() pageOptionsDto: PageOptionsDto
     ) {
         let member = await this.memberService.getMemberPaginate(pageOptionsDto, company.toLocaleLowerCase(), agent.toLowerCase())
-        console.log(member)
+      
+     
                 return member
      
       
