@@ -173,7 +173,9 @@ export class MemberTurnController {
 
         this.logger.log(winlose);
         this.logger.log('calculateTurnDiff');
-        const diff = await this.memberTurnService.calculateTurnDiff(winlose.validAmount, member_turn_v2)
+     
+        const temp_turn = { ...member_turn_v2}
+        const diff = await this.memberTurnService.calculateTurnDiff(winlose.validAmount, temp_turn)
         const min_value = Object.values(diff)
 
 
@@ -184,7 +186,7 @@ export class MemberTurnController {
 
         member_turn_v2.min_turn = Math.min(...min_value)
         // turn or not 
-        member_turn_v2 = await this.memberTurnService.updateMemberTurn(member_turn_v2, member_turn_v2)
+        member_turn_v2 = await this.memberTurnService.saveMemberTurn(member_turn_v2)
 
         if (member_turn_v2.min_turn > 0) throw new BadRequestException({ message: `ถอนไม่ได้ ท่านต้องวางเดิมพันอีกจำนวน ${member_turn_v2.min_turn}  เครดิต ในประเภทเกม ${display_type}`, turnStatus: true })
 
@@ -394,6 +396,8 @@ export class MemberTurnController {
         @Body() input: WithdrawMemberDto
     ) {
         this.logger.log('withdrawMember hit');
+        if(input.amount < 1) throw new BadRequestException({ message: `ไม่สามารภถอนยอดน้อยกว่า 1 บาท ได้ `, turnStatus: true })
+       
         // throw new NotFoundException({ message: "ไม่พบข้อมูลยูสเซ่อร์", turnStatus: true ,status:400})
         const cacheName = `_withdraw_member_${input.username}_${input.amount.toString()}`
 
@@ -414,8 +418,11 @@ export class MemberTurnController {
         if (!member) throw new NotFoundException({ message: "ไม่พบข้อมูลยูสเซ่อร์", turnStatus: true })
         const setting = await this.memberTurnService.getSetting(member.company, member.agent)
         if (!setting || setting.system_status == false) throw new BadRequestException({ message: "เว็บปิดใช้งาน", turnStatus: true })
-
-
+      
+        if(input.amount < setting.least_wd_credits) throw new BadRequestException({ message: `ถอนไม่ได้ ยอดถอนขั้นต่ำ คือ ${setting.least_wd_credits}`, turnStatus: true })
+       
+   
+      
         if (setting.wd_status == false) throw new BadRequestException({ message: "ระบบถอนปิดใช้งานชั่วคราว", turnStatus: true })
 
         await this.memberTurnService.checkIsCanwithdrawTodayFromSetting(member, setting, input.amount)
@@ -426,7 +433,7 @@ export class MemberTurnController {
             //check turn V2
             member_turn_v2 = await this.memberTurnService.getMemberTurn(input.username)
             if (!member_turn_v2) {
-                const setting = await this.memberTurnService.getSetting(member.company, member.agent)
+               
                 member_turn_v2 = await this.memberTurnService.createTurnV2(member, setting, 0)
             }
             // console.log(member_turn_v2)
@@ -627,6 +634,8 @@ export class MemberTurnController {
         @Body() input: WithdrawMemberDto
     ) {
         this.logger.log('withdrawMemberAffiliate hit');
+        if(input.amount < 1) throw new BadRequestException({ message: `ไม่สามารภถอนยอดน้อยกว่า 1 บาท ได้ `, turnStatus: true })
+       
         await this.memberTurnService.checkIsCanwithdrawTodayFromAffiliate(input.username, input.amount)
         const cacheName = `_withdraw_member_Affiliate_${input.username}_${input.amount.toString()}`
 
@@ -651,14 +660,17 @@ export class MemberTurnController {
         if (!setting || setting.system_status == false || setting.wd_status == false) throw new BadRequestException({ message: "เว็บปิดใช้งาน", turnStatus: true })
 
         if (setting.wd_status == false) throw new BadRequestException({ message: "ระบบถอนปิดใช้งานชั่วคราว", turnStatus: true })
-
+        if(input.amount < setting.least_wd_credits) throw new BadRequestException({ message: `ถอนไม่ได้ ยอดถอนขั้นต่ำ คือ ${setting.least_wd_credits}`, turnStatus: true })
+       
 
 
         const res = await this.memberService.cutCreditAffiliate(member, input.amount)
         const result_withdraw = new CutCreditDto()
         result_withdraw._id = `af_${res.id}`
         result_withdraw.type = 'affliliate'
-        result_withdraw.withdraw_amount = res.amount
+        result_withdraw.withdraw_amount = input.amount
+        console.log(`withdraw aff amount ${input.username} ${input.amount}`)
+        console.log(`withdraw aff amount 2 ${JSON.stringify( result_withdraw)} `)
         result_withdraw.remark = `รายการแจ้งถอน รายได้ จาก ${input.username} จำนวน ${input.amount} บาท  `
         //save withdrawlist
         await this.memberService.sendWithdrawList(result_withdraw, member)

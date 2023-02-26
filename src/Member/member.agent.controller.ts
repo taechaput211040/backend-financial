@@ -21,6 +21,7 @@ import { CreateMemberAgentDto } from 'src/Input/create.member.agent.dto';
 import { TopupSmartDto } from 'src/Input/topup.smart.dto';
 import { ChangePasswordDto } from 'src/Input/change.password.dto';
 import { LockUserDto } from 'src/Input/lock.user.dto';
+import { MemberTurnService } from './member.turn.service';
 @Controller('api/Member/Agent')
 @SerializeOptions({ strategy: 'excludeAll' })
 export class MemberAgentController {
@@ -29,7 +30,9 @@ export class MemberAgentController {
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
         private readonly memberService: MemberService,
         private readonly websiteService: WebsiteService,
-        private readonly memberConfigService: MemberConfigService
+        private readonly memberConfigService: MemberConfigService,
+        
+        private readonly memberTurnService: MemberTurnService,
 
     ) { }
     @Get('/Reset')
@@ -97,7 +100,27 @@ export class MemberAgentController {
      
       
     }
+    @Get('/ClearCache/:username')
+    @UseInterceptors(ClassSerializerInterceptor)
+    async clearCacheUsername(
+        @Param('username') username: string,
 
+        @Query() pageOptionsDto: PageOptionsDto
+    ) {
+
+        const member = await this.memberService.getMember(username)
+        await this.cacheManager.del('_member_info_' + username.toLocaleLowerCase())
+        await this.cacheManager.del('_member_' + username.toLocaleLowerCase())
+        await this.cacheManager.del(`_memberRepo_${username.toLowerCase()}`)
+        
+        await this.cacheManager.del('_member_' + this.generateSeamlessUsername(member))
+        const cacheName = `_turn_${username.toLowerCase()}`
+        const cacheName_with_turn = `_member_with_turn_${username.toLowerCase()}`
+        await this.cacheManager.del(cacheName_with_turn)
+        await this.cacheManager.del(cacheName)
+        return 'helloooooo'
+      
+    }
     @Post()
     @UsePipes(new ValidationPipe({ transform: true }))
     async createMemberAgent(
@@ -169,8 +192,9 @@ export class MemberAgentController {
         const result = await this.memberService.saveMemberEntity(member)
       
         if(!member.sync)  {
-            await this.memberService.changePasswordSmart(member,result.password)
-            await this.websiteService.changePasswordRico(member,result.password)
+            await this.memberTurnService.syncMember(member)
+            // await this.memberService.changePasswordSmart(member,result.password)
+            // await this.websiteService.changePasswordRico(member,result.password)
         }
        
         await this.cacheManager.del('_member_info_' + result.username.toLocaleLowerCase())

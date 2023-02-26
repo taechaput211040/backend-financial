@@ -46,6 +46,10 @@ export class MemberTurnService {
 
             // go sync turn and credit
 console.log('s1')
+
+
+
+
             member_turn_v2 = await this.findmemberRicoSync(member, setting)
 
 
@@ -70,6 +74,9 @@ console.log('s1')
             member_turn_v2 = await this.updateMemberTurn(member_turn_v2, member_turn_v2)
 
             await this.memberService.saveMember(member)
+
+
+     
             return
         } catch (error) {
             throw new BadRequestException('sync error')
@@ -230,7 +237,8 @@ async saveMemberTurn(member_turn:MemberTurn){
         // $url_ip = env('CHECK_MAINTAINANCE')."/api/UserStat/".$user;
     }
     async findmemberRicoSync(member: Members, setting: Setting) {
-
+        await this.memberService.topupV2Temp(0.01, member, setting);
+        await this.memberService.withdrawV2Temp(0.01, member, setting);
 // console.log(query_get_username)
         const query_get_username
             = ` 
@@ -367,8 +375,111 @@ console.log(url_all_winlose)
         } catch (error) {
             console.log('allwinlose error :', error)
             console.log(error.response.data)
-            throw new BadRequestException({ message: "พบข้อผิดพลาด กรุณาลองใหม่", turnStatus: true })
-        }
+            return {
+                outstanding: [
+                  {
+                    gameType: "SB",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "ES",
+                    bet: 0,
+                  payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "SL",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "LC",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "OT",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "LT",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "FH",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  }
+                ],
+                validAmount: [
+                  {
+                    gameType: "SB",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "ES",
+                    bet: 0,
+                  payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "SL",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "LC",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "OT",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "LT",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  },
+                  {
+                    gameType: "FH",
+                    bet: 0,
+                    payout: 0,
+                    turnover: 0,
+                    winlose: 0
+                  }
+                ]
+                
+              } }
 
 
 
@@ -393,8 +504,13 @@ console.log(url_all_winlose)
                 if (Number(amount) < Number(setting.least_wd_credits)) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ ยอดถอนขั้นต่ำ  ${setting.least_wd_credits}  บาท `, turnStatus: true })
             }
         }
+        if(setting.wdlimit_time_status && setting.wdlimitTime > 0){
+            if (Number(amount_and_count.count) >= Number(setting.wdlimitTime)) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ เกินขีดจำกัดยอดถอนต่อวัน, สามารถ ถอนได้  ${setting.wdlimitTime}  ครั้ง ต่อวัน`, turnStatus: true })
 
 
+        }
+
+     
 
     }
     async getWithdrawAmountAndCountToday(username: string) {
@@ -461,21 +577,17 @@ console.log(url_all_winlose)
     async syncMemberCreditToV2(member: Members, setting: Setting, rico_member: any) {
         //get credit v1
       
-        const credit = await this.memberService.getCreditByDisplayname(member)
-        console.log("creditV1:", credit.credit)
-
+      
         // get credit v2
         const creditV2 = await this.memberService.getCreditByDisplaynameV2(member, setting)
         console.log("creditV2:", creditV2.balance)
 
         //adjust credit v2
-        const current_credit = await this.memberService.adjustCreditToV2(credit.credit, creditV2.balance, member, setting)
+        const current_credit = await this.memberService.adjustCreditToV2(0, creditV2.balance, member, setting)
 
 
         //deduct credit v1
-        if (credit.credit > 0) {
-            await this.memberService.withdraw(member.username, credit.credit)
-        }
+        
 
 
 
@@ -486,7 +598,7 @@ console.log(url_all_winlose)
         member.password = rico_member[0].password
         const promotion_id = await this.getPromotionV2ByRicoId(member, rico_member[0].bonusid)
         member.bonusid_v2 = promotion_id
-
+        console.log("promo pass:", creditV2.balance)
         //set member sync = true
         await this.memberService.updateSyncedMember(member)
         return current_credit

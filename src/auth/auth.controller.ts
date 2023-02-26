@@ -14,6 +14,7 @@ import { LoginDto } from "src/Input/login.dto";
 import { Cache } from "cache-manager";
 
 import { RealIP } from 'nestjs-real-ip';
+import { SettingDto } from "src/Input/setting.dto";
 @Controller('/api/Auth')
 
 @SerializeOptions({ strategy: 'excludeAll' })
@@ -41,9 +42,14 @@ export class AuthController {
         console.log(request.headers)
         console.log(input)
 
-   
-         
-         let  member =  await this.authService.validateMember(input)
+        
+         const result =await  this.authService.getSettingByHash(input.hash)
+         let setting = new SettingDto()
+         setting = {...setting,...result}
+        
+         if(!setting)  throw new UnauthorizedException('unauthorized')
+
+         let  member =  await this.authService.validateMember(input , setting)
          const username = member.username.toUpperCase()
          const agent = member.agent
          const company = member.company
@@ -66,56 +72,10 @@ export class AuthController {
           return {username : member.username.toUpperCase(),
             accessTokenMember:accessToken,
         id:member.id,
-        randomkey:ssid}
-        //    const a = await bcrypt.hash("hasha",10)
-        //    return await bcrypt.compare(password,user.password)
-        // if (!user) throw new BadRequestException('ข้อมูลไม่ถูกต้อง')
-        // if (!user.status) throw new BadRequestException('คุณถูกระงับการใช้งาน')
-        // if (!await bcrypt.compare(password, user.password)) throw new BadRequestException('ข้อมูลไม่ถูกต้อง')
-        // const id = user.id
-        // response.status(200)
-        // if (user.tfa_status) {
-
-          
-        // } else {
-        //     const accessToken = await this.jwtService.signAsync({
-        //         id
-        //     })
-    
-        //     const refreshToken = await this.jwtService.signAsync({
-        //        id
-        //     })
-        //     const expired_at = new Date()
-        //     expired_at.setDate(expired_at.getDate() + 2)
-    
-        //     if (request.headers['x-real-ip']) await this.userService.upDateIP(user, request.headers['x-real-ip'].toString())
-        //     await this.tokenService.save({
-        //         user_id: user.id,
-        //         token: refreshToken,
-        //         expired_at: expired_at
-        //     })
-        //     // console.log(response.status())
-        //     if (!user.menu_permission) user = await this.userService.assignDefaultMenu(user)
-        //     response.cookie('refresh_token', refreshToken, { httpOnly: true, maxAge: 1 * 24 * 60 * 60 * 1000 })
-        //     response.status(200)
-        //     return {
-        //         id: user.id,
-        //         token: accessToken,
-        //         refreshToken: refreshToken,
-        //         verify: user.tfa_secret ? true : false,
-        //         role: user.role,
-        //         username: user.username,
-        //         agent: user.agent,
-        //         company:user.company,
-        //         setting:await this.authService.getHash(user),
-        //         s_admin: user.s_admin,
-        //         limittopup: user.limittopup,
-        //         creditperday: user.creditperday,
-        //         menu: user.menu_permission,
-        //         ip: user.ip,
-        //         tfa_status:user.tfa_status
-        //     }
-        // }
+        randomkey:ssid,
+      phone:member.phone
+      }
+     
     }
 
     // @Post('/two-factor')

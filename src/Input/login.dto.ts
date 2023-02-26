@@ -17,6 +17,8 @@ export class LoginDto{
     password:string;
 @IsOptional()
     origin:string;
+    @IsOptional()
+    hash:string;
     
     
    

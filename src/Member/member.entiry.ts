@@ -20,6 +20,7 @@ export class Members {
   
     // @CreateDateColumn({ type: "datetime", default: () => moment().format()})
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
+    @Expose()
     public created_at: Date;
 
     @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })

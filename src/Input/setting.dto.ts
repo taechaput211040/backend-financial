@@ -115,5 +115,7 @@ export class SettingDto{
     @IsString()
     @IsOptional()
     mysql_db_name:string;
-
+    @IsBoolean()
+    @IsOptional()
+    wdlimit_time_status:boolean
 } 

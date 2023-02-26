@@ -74,9 +74,9 @@ export class MemberService {
 
     }
     public async verifyMemberSCB(company: string, agent: string, fromBankRef: string, fromBank: string, name: string): Promise<Members[]> {
-        if (fromBank == 'SCB' && name != 'null') {
+        if (fromBank == 'SCB') {
             console.log('scb')
-            return await this.memberRepository.find({ where: { company: company, agent: agent, name: name, scb_api_ref: fromBankRef } });
+            return await this.memberRepository.find({ where: { company: company, agent: agent, scb_api_ref: fromBankRef } });
         } else {
             console.log('other')
             return await this.memberRepository.find({ where: { company: company, agent: agent, other_api_ref: fromBankRef } });
@@ -714,7 +714,24 @@ export class MemberService {
         await this.cacheManager.del(cacheName)
         return members
     }
+async getMemberByPhone(phone:string,company:string,agent:string){
+  
+    const cacheName = `_memberRepo_${phone.toLowerCase()}_${company}_${agent}`
 
+    const value = await this.cacheManager.get(cacheName)
+    if (value) return plainToClass(Members, value)
+  
+    const member = await this.memberRepository.findOne({
+
+        where: { phone: phone, agent: agent.toLowerCase(), company: company.toLowerCase() }
+    })
+    if (member) {
+        await this.cacheManager.set(cacheName, member, { ttl: null })
+    }
+
+    return member
+
+}
     public async validateMemberData(input: CreateMemberDto) {
         console.log('checking phone')
         const phone_check = await this.memberRepository.findOne({
@@ -1055,7 +1072,29 @@ export class MemberService {
             throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
         }
     }
+    async withdrawV2Temp(credit: number, member: Members, setting: Setting) {
+        const headersRequest = {
+            'Content-Type': 'application/json', // afaik this one is not needed
+            'apikey': `${setting.token}`,
+        };
+        const url = `${process.env.SMART_V2}/v1alpha/permanant/credit-tranfer/withdraw/`
 
+        const body = {
+            username: member.username,
+            amount: credit
+        }
+        try {
+            const res = await this.httpService.post(url, body, { headers: headersRequest }).toPromise()
+
+            console.log("topup:", res.data)
+            return res.data
+
+
+        } catch (error) {
+            console.log(error.response.data)
+            throw new BadRequestException({ message: `Can not connect API,Please try again or contact admin.`, turnStatus: true })
+        }
+    }
     public async cutCreditV2(credit: number, member: Members, setting: Setting) {
         const headersRequest = {
             'Content-Type': 'application/json', // afaik this one is not needed
