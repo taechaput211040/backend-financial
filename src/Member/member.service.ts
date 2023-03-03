@@ -312,10 +312,10 @@ export class MemberService {
             return a
         }
         if (pageOptionsDto.keyword && pageOptionsDto.options == 'bankRef') {
-            console.log(pageOptionsDto.username)
+            console.log('gggg')
             const [result, total] = await this.memberRepository.findAndCount({
                 where: { agent: agent ,  company: company ,
-                    bankAccRef:Like(`${pageOptionsDto.keyword.toUpperCase()}%`) 
+                    other_api_ref:Like(`${pageOptionsDto.keyword.toUpperCase()}%`) 
                     // bankAccRef:pageOptionsDto.keyword.toUpperCase()
             },
                 order: { created_at: 'DESC' },
@@ -793,6 +793,8 @@ async getMemberByPhone(phone:string,company:string,agent:string){
         input.agent = setting.agent_username.toLowerCase()
         input.company = setting.company.toLowerCase()
         input.sync = true
+        input.bankAcc = input.bankAcc.trim()
+        input.phone = input.phone.trim()
         console.log(input)
         const member = await this.memberRepository.save(input)
         return member
@@ -968,7 +970,6 @@ async getMemberByPhone(phone:string,company:string,agent:string){
     public async saveCutCreditRecord(credit_result: CutCreditDto, username: string) {
 
         const url = `${process.env.ALL_WHEEL}/api/Wheel/admin/BuyFeature`
-
         const body = {
             username: username.toLowerCase(),
             result: credit_result

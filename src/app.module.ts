@@ -34,7 +34,7 @@ import { LockDown } from './Entity/rico.lockdown.entity';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
     
-        type: 'cockroachdb',
+        type: 'postgres',
         host: process.env.DB_HOST,
         port: Number(process.env.DB_PORT),
         username: process.env.DB_USER,
@@ -56,7 +56,7 @@ import { LockDown } from './Entity/rico.lockdown.entity';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
       
-        type: 'cockroachdb',
+        type: 'postgres',
         host: process.env.DB_HOST,
         port: Number(process.env.DB_PORT),
         username: process.env.DB_USER,
@@ -72,27 +72,7 @@ import { LockDown } from './Entity/rico.lockdown.entity';
       inject: [ConfigService],
       
     }),
-    TypeOrmModule.forRootAsync({
-      name:'rico',
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-      
-        type: 'mysql',
-        host: process.env.DB_HOST_MSQL,
-        port: Number(process.env.DB_PORT_MSQL),
-        username: process.env.DB_USER_MSQL,
-        password: process.env.DB_PASSWORD_MSQL,
-        database: process.env.DB_NAME_MSQL,
-        entities: [LockDown],
-        synchronize: false,
-        ssl: {
-          rejectUnauthorized:false
-          // ca: atob(process.env.CROCK_DB_CERT),
-        },
-      }),
-      inject: [ConfigService],
-      
-    }),
+   
     
     SwaggerModule,
    WebsiteModule,

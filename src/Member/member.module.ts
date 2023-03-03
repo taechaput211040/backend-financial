@@ -22,10 +22,10 @@ import { MemberTurnController } from './member.turn.controller';
 import { LockDown } from 'src/Entity/rico.lockdown.entity';
 import { AuthService } from 'src/auth/auth.service';
 import { JwtModule, JwtService } from '@nestjs/jwt';
+import { CacheMemberModule } from 'src/redisconnectmember/member.module';
 @Module({
     imports: [TypeOrmModule.forFeature([Members,MemberConfig,MemberTurn]), 
     TypeOrmModule.forFeature([Website],'support'), 
-    TypeOrmModule.forFeature([LockDown],'rico'), 
     CacheModule.register({ 
         store: redisStore,
         host: process.env.REDIS_SERVER,
@@ -45,7 +45,7 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
     }),
         HttpModule,
         SwaggerModule,
-        AuthModule
+        AuthModule,
       ], 
     controllers: [MemberController,MemberAgentController,MemberTurnController],
     providers: [MemberService,WebsiteService,MemberConfigService,MemberTurnService,AuthService],

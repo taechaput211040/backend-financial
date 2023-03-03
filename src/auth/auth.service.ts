@@ -94,5 +94,62 @@ return member
     }
 
   }
+public async lineNotiPushRegister(username:string,name:string,lastname:string,create_from:string,create_by:string,recommder:null,hash:string){
+  const url_noti =`${process.env.ALL_SUPPORT}/api/Notify/${hash}`
+  //  env('ALL_LINE_NOTIFY').'/api/Notify/'.env('MICROSERVICE_KEY');
+  let notidata
+  try {
+    const result_line = await this.httpService.get(url_noti).toPromise()
+notidata = result_line.data
+  } catch (error) {
+    notidata = null
+  }
+if(!notidata) return
+  
+    if(!notidata.feature_status || !notidata.status) return
+
+  
+}
+  // public static function lineNotiPushRegister($username,$name,$lastname,$create_from,$create_by,$recommder=null)
+  //   { 
+  //       $cacheName ='Noti_setting_'.env('AGENT');
+  //       if(Cache::has($cacheName)){
+  //           $noti_setting = Cache::get($cacheName);
+     
+  //           if($noti_setting['feature_status'] == false || $noti_setting['status'] ==false )
+  //           {
+  //               return;
+  //           }
+  //       } else {
+  //           $cacheName ='Noti_setting_'.env('AGENT');
+  //           $url = env('ALL_LINE_NOTIFY').'/api/Notify/'.env('MICROSERVICE_KEY');
+  //           $res = Http::get($url);
+  //           Cache::forever($cacheName,$res->json());
+            
+  //           $noti_setting =  $res->json();
+  //           if($noti_setting['feature_status'] == false || $noti_setting['status'] ==false )
+  //           {
+  //               return;
+  //           }
+  //       }
+  //       $member_count  = Member::whereDate('created_at', Carbon::today()->toDateString())->orderBy('created_at', 'asc')->count();
+  //       $data = [
+  //           'count'=>$member_count,
+  //           'website'=>env('APP_URL'),
+  //           'agent'=>env('AGENT'),
+  //           'hash'=>env('MICROSERVICE_KEY'),
+  //           'name'=>(string)$name,
+  //           'lastname'=>(string)$lastname,
+  //           'username'=>(string)$username,
+  //           'create_by'=>(string)$create_by ,
+  //           'create_from'=>(string)$create_from,
+  //           'recommder'=>(string)$recommder,
+  //        ];
+  //       $url = env('ALL_LINE_NOTIFY').'/api/Notify/Regis/'.env('MICROSERVICE_KEY');
+  //        $res =Http::post($url,$data);
+  //       return  $res->json();
+       
+        
+  //   }
 
 }

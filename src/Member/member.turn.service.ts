@@ -25,8 +25,8 @@ export class MemberTurnService {
     constructor(
         @InjectRepository(MemberTurn)
         private readonly memberTurnRepository: Repository<MemberTurn>,
-        @InjectRepository(LockDown, 'rico')
-        private readonly ricoRepo: Repository<LockDown>,
+        // @InjectRepository(LockDown, 'rico')
+        // private readonly ricoRepo: Repository<LockDown>,
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
 
         private httpService: HttpService,
@@ -157,21 +157,7 @@ async saveMemberTurn(member_turn:MemberTurn){
 
     }
 
-    async getRicoMemberTurn(rico_member: any, setting: any) {
-
-        const query_get_memberTurn
-            = ` 
-        SELECT * FROM ${setting.mysql_db_name}.member_turns where member_id = ${rico_member.id} ;`
-
-
-        // console.log(query_get_memberTurn)
-        // return
-        let rico_memberTurn = await this.ricoRepo.query(query_get_memberTurn)
-
-        // console.log(rico_memberTurn)
-
-        return rico_memberTurn
-    }
+  
     async getSetting(company: string, agent: string) {
         const setting_url = `${process.env.ALL_SETTING}/api/Setting/Main/${company}/${agent}`
         console.log(setting_url)
@@ -189,26 +175,26 @@ async saveMemberTurn(member_turn:MemberTurn){
         console.log('member sync start')
         const setting: Setting = await this.getSetting(member.company, member.agent)
         if (!setting) throw new NotFoundException()
-
-        const query_get_username
-            = ` 
-        SELECT * FROM ${setting.mysql_db_name}.members where username = '${member.username}' ;`
-
-
-
-        let rico_member = await this.ricoRepo.query(query_get_username)
+        return await this.createTurnV2(member, setting, 0)
+        // const query_get_username
+        //     = ` 
+        // SELECT * FROM ${setting.mysql_db_name}.members where username = '${member.username}' ;`
 
 
-        const rico_member_turn = await this.getRicoMemberTurn(rico_member[0], setting)
-        if (rico_member_turn.length == 0) {
-            console.log('rico turn = 0 ')
-            const current_credit = await this.syncMemberCreditToV2(member, setting, rico_member)
-            return await this.createTurnV2(member, setting, current_credit)
-        } else if (rico_member_turn.length > 0) {
-            console.log('rico turn > 0 ')
-            const current_credit = await this.syncMemberCreditToV2(member, setting, rico_member)
-            return await this.syncTurnV2(rico_member_turn, member, setting, current_credit)
-        }
+
+        // let rico_member = await this.ricoRepo.query(query_get_username)
+
+
+        // const rico_member_turn = await this.getRicoMemberTurn(rico_member[0], setting)
+        // if (rico_member_turn.length == 0) {
+        //     console.log('rico turn = 0 ')
+        //     const current_credit = await this.syncMemberCreditToV2(member, setting, rico_member)
+        //     return await this.createTurnV2(member, setting, current_credit)
+        // } else if (rico_member_turn.length > 0) {
+        //     console.log('rico turn > 0 ')
+        //     const current_credit = await this.syncMemberCreditToV2(member, setting, rico_member)
+        //     return await this.syncTurnV2(rico_member_turn, member, setting, current_credit)
+        // }
 
     }
     async getBalanceV2(member: Members) {
@@ -240,25 +226,26 @@ async saveMemberTurn(member_turn:MemberTurn){
         await this.memberService.topupV2Temp(0.01, member, setting);
         await this.memberService.withdrawV2Temp(0.01, member, setting);
 // console.log(query_get_username)
-        const query_get_username
-            = ` 
-        SELECT * FROM ${setting.mysql_db_name}.members where username = '${member.username}' ;`
+return await this.createTurnV2(member, setting, 0)
+        // const query_get_username
+        //     = ` 
+        // SELECT * FROM ${setting.mysql_db_name}.members where username = '${member.username}' ;`
 
    
 
-        let rico_member = await this.ricoRepo.query(query_get_username)
+        // let rico_member = await this.ricoRepo.query(query_get_username)
 
        
-        const rico_member_turn = await this.getRicoMemberTurn(rico_member[0], setting)
+        // const rico_member_turn = await this.getRicoMemberTurn(rico_member[0], setting)
 
    
-        if (rico_member_turn.length == 0) {
-            const current_credit = await this.syncMemberCreditToV2(member, setting, rico_member)
-            return await this.createTurnV2(member, setting, current_credit)
-        } else if (rico_member_turn.length > 0) {
-            const current_credit = await this.syncMemberCreditToV2(member, setting, rico_member)
-            return await this.syncTurnV2(rico_member_turn, member, setting, current_credit)
-        }
+        // if (rico_member_turn.length == 0) {
+        //     const current_credit = await this.syncMemberCreditToV2(member, setting, rico_member)
+        //     return await this.createTurnV2(member, setting, current_credit)
+        // } else if (rico_member_turn.length > 0) {
+        //     const current_credit = await this.syncMemberCreditToV2(member, setting, rico_member)
+        //     return await this.syncTurnV2(rico_member_turn, member, setting, current_credit)
+        // }
 
     }
     async getWinlose(member: Members) {
@@ -504,7 +491,11 @@ console.log(url_all_winlose)
                 if (Number(amount) < Number(setting.least_wd_credits)) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ ยอดถอนขั้นต่ำ  ${setting.least_wd_credits}  บาท `, turnStatus: true })
             }
         }
+        console.log(setting.wdlimit_time_status)
+        console.log(setting.wdlimitTime)
+        console.log(amount_and_count)
         if(setting.wdlimit_time_status && setting.wdlimitTime > 0){
+            console.log('checking')
             if (Number(amount_and_count.count) >= Number(setting.wdlimitTime)) throw new BadRequestException({ message: `ไม่สามารถทำการถอนได้ เกินขีดจำกัดยอดถอนต่อวัน, สามารถ ถอนได้  ${setting.wdlimitTime}  ครั้ง ต่อวัน`, turnStatus: true })
 
 

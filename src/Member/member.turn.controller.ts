@@ -395,6 +395,10 @@ export class MemberTurnController {
     async withdrawMember(
         @Body() input: WithdrawMemberDto
     ) {
+
+        input.amount = parseInt( input.amount.toString())
+
+       
         this.logger.log('withdrawMember hit');
         if(input.amount < 1) throw new BadRequestException({ message: `ไม่สามารภถอนยอดน้อยกว่า 1 บาท ได้ `, turnStatus: true })
        
@@ -422,7 +426,7 @@ export class MemberTurnController {
         if(input.amount < setting.least_wd_credits) throw new BadRequestException({ message: `ถอนไม่ได้ ยอดถอนขั้นต่ำ คือ ${setting.least_wd_credits}`, turnStatus: true })
        
    
-      
+       
         if (setting.wd_status == false) throw new BadRequestException({ message: "ระบบถอนปิดใช้งานชั่วคราว", turnStatus: true })
 
         await this.memberTurnService.checkIsCanwithdrawTodayFromSetting(member, setting, input.amount)
@@ -634,6 +638,7 @@ export class MemberTurnController {
         @Body() input: WithdrawMemberDto
     ) {
         this.logger.log('withdrawMemberAffiliate hit');
+        input.amount = parseInt( input.amount.toString())
         if(input.amount < 1) throw new BadRequestException({ message: `ไม่สามารภถอนยอดน้อยกว่า 1 บาท ได้ `, turnStatus: true })
        
         await this.memberTurnService.checkIsCanwithdrawTodayFromAffiliate(input.username, input.amount)
@@ -695,8 +700,11 @@ export class MemberTurnController {
         let member = await this.memberService.getMember(input.username.toLocaleLowerCase())
 
         if (!member) throw new NotFoundException()
-        await this.memberTurnService.saveUserTransaction(input.operator, 'UPDATE_TURN', `แก้ไขเทิร์นสมาชิก user: ${input.username}`, input, input.ip_operator, member.company, member.agent)
-        if (!member.sync) {
+        if(input.operator){
+            await this.memberTurnService.saveUserTransaction(input.operator, 'UPDATE_TURN', `แก้ไขเทิร์นสมาชิก user: ${input.username}`, input, input.ip_operator, member.company, member.agent)
+      
+        }
+       if (!member.sync) {
 
             await this.memberTurnService.syncMember(member)
             const member_turn = await this.memberTurnService.getMemberTurn(input.username)

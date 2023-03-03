@@ -15,7 +15,7 @@ import { Setting } from "src/Setting/setting.entity";
 
 
 export default registerAs('orm.config',():TypeOrmModuleOptions=>(  {
-  type: 'cockroachdb', 
+  type: 'postgres', 
   host: process.env.DB_HOST, 
   port: Number(process.env.DB_PORT),
   username: process.env.DB_USER, 
