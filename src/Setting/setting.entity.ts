@@ -86,11 +86,11 @@ export class Setting {
 
     @Column({ nullable: true, length: 1024 })
     token: string;
-
-    @Column({ nullable: true })
-    @Expose()
+ 
+    @Column({ nullable: true }) 
+    @Expose() 
     register_link: string;
-
+  
     @Column({ nullable: true })
     @Expose()
     login_link: string;

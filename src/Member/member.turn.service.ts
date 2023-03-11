@@ -36,7 +36,13 @@ export class MemberTurnService {
     ) {
 
     }
-
+  
+    async saveAll(input:MemberTurn){
+        return await this.memberTurnRepository.save(input)
+    }
+    async getAll(){
+        return await this.memberTurnRepository.query(`select *  from member_turn m where created_at > '2023-03-03 18:38:49.107'`)
+    }
     public async syncMember(member: Members) {
         const setting = await this.getSetting(member.company, member.agent)
         if (!setting || setting.system_status == false) throw new NotFoundException({ message: "เว็บปิดใช้งาน", turnStatus: true })
@@ -72,7 +78,7 @@ console.log('s1')
             member_turn_v2.min_turn = Math.min(...min_value)
             // turn or not 
             member_turn_v2 = await this.updateMemberTurn(member_turn_v2, member_turn_v2)
-
+            member.sync = true
             await this.memberService.saveMember(member)
 
 
@@ -216,7 +222,7 @@ async saveMemberTurn(member_turn:MemberTurn){
             console.log('getIPdata success :', result.data)
             return result.data
         } catch (error) {
-            console.log('getIPdata error :', error)
+            // console.log('getIPdata error :', error)
             console.log(error.response.data)
             return null
         }
@@ -236,7 +242,7 @@ return await this.createTurnV2(member, setting, 0)
         // let rico_member = await this.ricoRepo.query(query_get_username)
 
        
-        // const rico_member_turn = await this.getRicoMemberTurn(rico_member[0], setting)
+        // const rico_member_tu rn = await this.getRicoMemberTurn(rico_member[0], setting)
 
    
         // if (rico_member_turn.length == 0) {
@@ -518,9 +524,9 @@ console.log(url_all_winlose)
 
     }
     async checkIsCanwithdrawTodayFromAffiliate(username: string, amount: number) {
-        const url_all_deposit = `${process.env.ALL_DEPOSIT}/api/Aff/Report/Validate/${username.toLowerCase()}/${amount.toString()}`
+        const url_all_deposit = `${process.env.ALL_DEPOSIT}/api/Aff/Report/ValidateV2/${username.toLowerCase()}/${amount.toString()}`
         // const url_all_withdraw = `${process.env.ALL_WITHDRAW}/api/Withdraw/Auto/AmountCount/${username.toLowerCase()}`
-
+console.log(url_all_deposit)
         try {
             const result = await this.httpService.get(url_all_deposit).toPromise()
             return result.data
@@ -610,6 +616,8 @@ console.log(url_all_winlose)
     }
     async createTurnV2(member: Members, setting: Setting, current_credit: number) {
         console.log('creating turnv2 ')
+        const old_turn = await this.getMemberTurn(member.username.toLowerCase()) 
+        if(old_turn) return old_turn
         const turn = new MemberTurn()
         turn.username = member.username
         turn.limitwithdraw = 0

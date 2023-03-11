@@ -14,7 +14,7 @@ import { WithdrawNotifyDto } from 'src/Input/create.withdraw.notify.dto';
 import { DepositDto } from 'src/Input/deposit.dto';
 import { UpdateMemberDto } from 'src/Input/update.member.dto.ts';
 import { UpdateNotifyDto } from 'src/Input/update.notify.dto';
-import { Between, Like, Repository, SelectQueryBuilder } from 'typeorm';
+import { Between, In, Like, Repository, SelectQueryBuilder } from 'typeorm';
 import { Members } from './member.entiry';
 import { AxiosResponse } from 'axios';
 import { CreateAffMemberSettingDto } from 'src/Input/create.aff.member.setting.dto';
@@ -37,6 +37,10 @@ import { plainToClass } from 'class-transformer';
 import { ChangePasswordFrontendDto } from 'src/Input/change.password.frontend.dto';
 import { SettingDto } from 'src/Input/setting.dto';
 const qs = require('querystring');
+
+var count_ss = 0
+
+var count_all = 0
 @Injectable()
 export class MemberService {
     private readonly logger = new Logger(MemberService.name)
@@ -53,7 +57,42 @@ export class MemberService {
 
     }
 
+    public async checkOwnMemberV2(company:string,agent:string,member:CreateMemberDto){
+        if(company != member.company) throw new BadRequestException('Permission Denied.')
+        if(agent != member.agent) throw new BadRequestException('Permission Denied.')
+      }
+async saveAll(input:Members){
 
+    const memb = await this.memberRepository.findOne({where:{username:input.username}})
+   
+
+    if(memb){
+       
+        if(!memb.lastest_dpref){
+            memb.lastest_dpref = input.lastest_dpref
+            memb.phone = input.phone.toString()
+            memb.password = input.password
+            memb.bankAcc = input.bankAcc
+            memb.bankAccRef = input.bankAccRef
+            console.log('save dpref')
+            return await this.memberRepository.save(memb)
+        }
+        memb.phone = input.phone.toString()
+        memb.password = input.password
+        memb.bankAcc = input.bankAcc
+        memb.bankAccRef = input.bankAccRef
+        console.log('save phone')
+        return await this.memberRepository.save(memb)
+              
+    } 
+    console.log('ok')
+    count_ss++
+    console.log(count_ss)
+    return await this.memberRepository.save(input)
+}
+async getAll(agent:string){
+    return await this.memberRepository.find({where:{agent:'ls'}})
+}
     public async getMember(username: string): Promise<Members> {
 
 
@@ -1001,6 +1040,7 @@ async getMemberByPhone(phone:string,company:string,agent:string){
         // const url =`https://agent-service-backend-kdz5uqbpia-as.a.run.app/api/v1/member/6d0fca9f932e4fe1857e13849ca2182c`
         try {
             const res = await this.httpService.get(url, { headers: headersRequest }).toPromise()
+            console.log('balance :',res.data)
             return res.data
 
 

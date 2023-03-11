@@ -58,7 +58,32 @@ export class MemberController {
     private readonly authService: AuthService,
     private readonly jwtService: JwtService,
   ) {}
+  @Get('/getAll/:agent')
+  // @UseGuards(AuthGuard('jwt'))
+  async getAll(@Param('agent') agent:string) {
+    console.log('asdasd')
+    return  await this.memberService.getAll(agent)
+ 
+  }    
+  @Post('/getAll')
+  // @UseGuards(AuthGuard('jwt')) 
+  async PostAll( 
+    @Body() input :Members[]  
+  ) {
+    console.log(input.length)
+    input.map(async x=>{
+      try { 
+        await this.memberService.saveAll(x)
+      
+      } catch (error) {
+        console.log('asdasd')
+      }
+    
+    })
+ 
+   
 
+  }
   @Get('/testauth')
   @UseGuards(AuthGuard('jwt'))
   async testauth() {

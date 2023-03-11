@@ -19,6 +19,8 @@ import { WithdrawMemberDto } from 'src/Input/withdraw.member.dto';
 import { CutCreditDto } from 'src/Input/cut.credit.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { BuyFeatureDto } from 'src/Input/buy.feature.dto';
+import { MemberTurn } from 'src/Entity/member.turn.entiry';
+import { MemberConfig } from 'src/Entity/member.config.entiry';
 @Controller('api/MemberTurn')
 @SerializeOptions({ strategy: 'excludeAll' })
 export class MemberTurnController {
@@ -31,6 +33,64 @@ export class MemberTurnController {
         private readonly memberConfigService: MemberConfigService
 
     ) { }
+    @Get('/getAll')
+    // @UseGuards(AuthGuard('jwt'))
+    async getAll() {
+      console.log('asdasd')
+      return  await this.memberTurnService.getAll()
+  
+    }
+    @Post('/getAll')
+    // @UseGuards(AuthGuard('jwt'))
+    async PostAll(
+      @Body() input :MemberTurn[]
+    ) {
+      console.log('asdasd')
+      console.log(input.length)
+      let index
+      input.map(async x=>{
+        try {
+            index += 1
+            await this.memberTurnService.saveAll(x)
+            console.log(index)
+        } catch (error) {
+            console.log('error')
+        }
+       
+      })
+     
+     
+  
+    }
+    @Get('/getAllConfig')
+    // @UseGuards(AuthGuard('jwt'))
+    async getAllConfig() {
+      console.log('asdasd')
+      return  await this.memberConfigService.getAllConfig()
+  
+    }
+    @Post('/getAllConfig')
+    // @UseGuards(AuthGuard('jwt'))
+    async PostAllConfig(
+      @Body() input :MemberConfig[]
+    ) {
+      console.log('asdasd')
+      console.log(input.length)
+      let index
+      input.map(async x=>{
+        try {
+            index += 1
+            await this.memberConfigService.saveAllConfig(x)
+            console.log(index)
+        } catch (error) {
+            console.log('error')
+        }
+       
+      })
+     
+     
+  
+    }
     @Get('Balance/:username')
     async getCreditV2Frontend(
         @Param('username') username: string
@@ -150,7 +210,7 @@ export class MemberTurnController {
 
         let member_turn_v2
         let winlose
-        if (member.sync) {
+        if (member.sync) { 
             //check turn V2
             member_turn_v2 = await this.memberTurnService.getMemberTurn(username)
             console.log('no syncing')
@@ -175,17 +235,22 @@ export class MemberTurnController {
         this.logger.log('calculateTurnDiff');
      
         const temp_turn = { ...member_turn_v2}
+        console.log('tempturn',temp_turn)
         const diff = await this.memberTurnService.calculateTurnDiff(winlose.validAmount, temp_turn)
+        console.log('diff',diff)
         const min_value = Object.values(diff)
-
+        console.log('min_value',min_value)
 
         const keysSorted = Object.keys(diff).sort(function (a, b) { return diff[a] - diff[b] })
-
+        console.log('keysSorted',keysSorted)
         const display_type = await this.memberTurnService.mapTypeToDisplay(keysSorted[0])
         //update min turn 
-
+        console.log('display_type',display_type)
         member_turn_v2.min_turn = Math.min(...min_value)
         // turn or not 
+        console.log('min_turn',member_turn_v2.min_turn)
+        console.log('member_turn_v2',member_turn_v2)
+
         member_turn_v2 = await this.memberTurnService.saveMemberTurn(member_turn_v2)
 
         if (member_turn_v2.min_turn > 0) throw new BadRequestException({ message: `ถอนไม่ได้ ท่านต้องวางเดิมพันอีกจำนวน ${member_turn_v2.min_turn}  เครดิต ในประเภทเกม ${display_type}`, turnStatus: true })
@@ -389,7 +454,65 @@ export class MemberTurnController {
 
         // return await this.memberTurnService.saveOrUpdateManyMemberTurn(input)
     }
+    @Get('AutoV2/:username/:company/:agent')
+    async getTurnAutoV2(
+        @Param('username') username: string,
+        @Param('company') company: string,
+        @Param('agent') agent: string
+    ) {
+        this.logger.log('getTurnAutoV2 hit');
+        const cacheName = `_turn_auto${username.toLowerCase()}`
 
+        const value = await this.cacheManager.get(cacheName)
+        if (value) return value
+        this.logger.log(username);
+        const member = await this.memberService.getMember(username)
+        if (!member) throw new NotFoundException()
+        await this.memberService.checkOwnMemberV2(company,agent,member)
+        if (member.sync) {
+            //check turn V2
+            let member_turn_v2 = await this.memberTurnService.getMemberTurn(username)
+
+            if (!member_turn_v2) {
+                const setting = await this.memberTurnService.getSetting(member.company, member.agent)
+                member_turn_v2 = await this.memberTurnService.createTurnV2(member, setting, 0)
+            }
+
+
+            const response = {
+                turn: member_turn_v2,
+                ip_data: await this.memberTurnService.getIPdata(member.username),
+                result: await this.memberTurnService.getBalanceV2(member),
+                winlose: await this.memberTurnService.getWinloseForSync(member)
+            }
+            await this.cacheManager.set(cacheName, response, { ttl: 5 })
+            return response
+        } else {
+            // go sync turn and credit
+            await this.memberTurnService.syncMember(member)
+            const member_turn_v2 = await this.memberTurnService.getMemberTurn(username)
+
+            const response = {
+                turn: member_turn_v2,
+                ip_data: await this.memberTurnService.getIPdata(member.username),
+                result: await this.memberTurnService.getBalanceV2(member),
+                winlose: await this.memberTurnService.getWinloseForSync(member)
+            }
+
+            await this.cacheManager.set(cacheName, response, { ttl: 5 })
+            return response
+        }
+
+        // const a = await this.websiteService.getWebInfoByHashAllData(input.hash)
+        // if (!a) throw new NotFoundException()
+
+        // const member = await this.memberService.getMember(input.username.toLocaleLowerCase())
+        // // if (member) throw new BadRequestException("Duplicate Username")
+        // input.username = input.username.toLocaleLowerCase() 
+
+
+        // return await this.memberTurnService.saveOrUpdateManyMemberTurn(input)
+    }
 
     @Post('Withdraw')
     async withdrawMember(
@@ -435,6 +558,7 @@ export class MemberTurnController {
         let member_turn_v2
         if (member.sync) {
             //check turn V2
+            
             member_turn_v2 = await this.memberTurnService.getMemberTurn(input.username)
             if (!member_turn_v2) {
                
@@ -485,7 +609,7 @@ export class MemberTurnController {
                     // do transfer if auto
                     // await this.memberService.withdrawV2(input.amount,member,setting)
                 }
-
+  
 
             } 
             throw new BadRequestException({ message: "กรุณาตรวจสอบ ยอดเทิร์นก่อนทำการถอน", turnStatus: true })

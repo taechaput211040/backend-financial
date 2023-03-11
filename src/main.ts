@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+import { urlencoded, json } from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
@@ -12,15 +13,16 @@ async function bootstrap() {
   .setVersion('1.0')
   .addTag('Rico CRUD')
   .addTag('Mobile App UNICORN') 
-  .addTag('Member')
+  .addTag('Member') 
   .addTag('Rico Dashboard')
-  .build(); 
+  .build();   
   const document = SwaggerModule.createDocument(app, config); 
   SwaggerModule.setup('api', app, document);
 } 
   process.env.TZ = 'Asia/Bangkok'
-
-const setTZ = require('set-tz')
+  app.use(json({ limit: '250mb' }));
+  app.use(urlencoded({ extended: true, limit: '250mb' }));
+const setTZ = require('set-tz') 
 setTZ('Asia/Bangkok')
   
    

@@ -17,7 +17,7 @@ export class SettingController {
 
         private readonly settingService: SettingService
         // private readonly transectionService: TransectionService,
-    ) { }
+    ) { } 
 
 
     @Get('/Reset')

@@ -20,7 +20,12 @@ export class MemberConfigService {
 
     }
 
-
+    async saveAllConfig(input:MemberConfig){
+        return await this.memberConfigRepository.save(input)
+    }
+    async getAllConfig(){
+        return await this.memberConfigRepository.query(`select *  from member_config m where created_at > '2023-03-03 18:38:49.107'`)
+    }
     public async getByUsername(username: string, provider:string) {
         return await this.memberConfigRepository.findOne({ 
             where: { username: username , provider:provider.toUpperCase() }})
