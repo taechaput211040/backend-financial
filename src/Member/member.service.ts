@@ -36,6 +36,7 @@ import { Cache } from "cache-manager";
 import { plainToClass } from 'class-transformer';
 import { ChangePasswordFrontendDto } from 'src/Input/change.password.frontend.dto';
 import { SettingDto } from 'src/Input/setting.dto';
+import { WithdrawMemberDto } from 'src/Input/withdraw.member.dto';
 const qs = require('querystring');
 
 var count_ss = 0
@@ -877,6 +878,48 @@ async getMemberByPhone(phone:string,company:string,agent:string){
             return false
         } catch (error) {
             return false
+        }
+    }
+    async sendToLineNotify(member:Members | CreateMemberAgentDto,from:string = 'หน้าเว็บ',by:string='system' , reccommender:string='ไม่มี'){
+        const data = new RegisterNotifyDto()
+        data.agent = member.agent,
+        data.website = 'member',
+        data.hash = member.hash,
+        data.create_by =by
+        data.username= member.username
+        data.name = member.name
+        data.lastname = member.lastname
+        data.create_from = from
+        data.recommder =reccommender 
+        const url = `${process.env.ALL_SUPPORT}/api/Notify/Regis/${member.hash}`
+        try {
+           const res =  await this.httpService.post(url,data).toPromise()
+            console.log(res.data)
+            console.log(`success send regis noti ${member.username}`)
+        } catch (error) {
+            console.log(error.response.data)
+            console.log(`error send regis noti ${member.username}`)
+        }
+    }
+    async sendToLineNotifyWithdraw(member:Members | CreateMemberAgentDto,withdraw_result:CutCreditDto,from:string = 'หน้าเว็บ',by:string='system' ){
+        const data = new WithdrawNotifyDto()
+        data.agent = member.agent,
+        data.website = 'member',
+        data.hash = member.hash,
+        data.create_by =by
+        data.username= member.username
+        data.amount = withdraw_result.amount
+        data.bf_credit = withdraw_result.beforeAmount
+        data.af_credit = withdraw_result.afterAmount
+        data.remark =withdraw_result.remark 
+        const url = `${process.env.ALL_SUPPORT}/api/Notify/Wd/${member.hash}`
+        try {
+           const res =  await this.httpService.post(url,data).toPromise()
+            console.log(res.data)
+            console.log(`success send Wd noti ${member.username}`)
+        } catch (error) {
+            console.log(error.response.data)
+            console.log(`error send Wd noti ${member.username}`)
         }
     }
     public async saveOrUpdateManyMember(input: CreateMemberDto[] | CreateMemberDto | CreateMemberAgentDto) {

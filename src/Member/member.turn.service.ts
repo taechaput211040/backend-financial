@@ -59,25 +59,25 @@ console.log('s1')
             member_turn_v2 = await this.findmemberRicoSync(member, setting)
 
 
-            winlose = await this.getWinloseForSync(member)
+            // winlose = await this.getWinloseForSync(member)
 
-            // $valids = $b->json()['validAmount'];
-            // $outs = $b->json()['outstanding'];
-
-
-            //calculate turn diff 
-            const diff = await this.calculateTurnDiff(winlose.validAmount, member_turn_v2)
-            const min_value = Object.values(diff)
+            // // $valids = $b->json()['validAmount'];
+            // // $outs = $b->json()['outstanding'];
 
 
-            const keysSorted = Object.keys(diff).sort(function (a, b) { return diff[a] - diff[b] })
+            // //calculate turn diff 
+            // const diff = await this.calculateTurnDiff(winlose.validAmount, member_turn_v2)
+            // const min_value = Object.values(diff)
 
-            const display_type = await this.mapTypeToDisplay(keysSorted[0])
-            //update min turn 
 
-            member_turn_v2.min_turn = Math.min(...min_value)
-            // turn or not 
-            member_turn_v2 = await this.updateMemberTurn(member_turn_v2, member_turn_v2)
+            // const keysSorted = Object.keys(diff).sort(function (a, b) { return diff[a] - diff[b] })
+
+            // const display_type = await this.mapTypeToDisplay(keysSorted[0])
+            // //update min turn 
+
+            // member_turn_v2.min_turn = Math.min(...min_value)
+            // // turn or not 
+            // member_turn_v2 = await this.updateMemberTurn(member_turn_v2, member_turn_v2)
             member.sync = true
             await this.memberService.saveMember(member)
 

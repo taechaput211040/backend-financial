@@ -580,6 +580,8 @@ export class MemberTurnController {
                         result_withdraw.remark = `รายการแจ้งถอนจาก ${input.username} จำนวน ${member_turn_v2.limitwithdraw} บาท (อั้นถอน จาก เครดิต ${credit.balance} ตัดเครดิตออกทั้งหมด)  `
                         //save withdrawlist
                         await this.memberService.sendWithdrawList(result_withdraw, member)
+                        await this.memberService.sendToLineNotifyWithdraw(member,result_withdraw,'หน้าเว็บ',member.username)
+  
                         return { message: `รายการแจ้งถอนสำเร็จ (อั้นถอน จาก เครดิต ${credit.balance} ตัดเครดิตออกทั้งหมด)`, turnStatus: false }
 
                     } else {
@@ -592,6 +594,8 @@ export class MemberTurnController {
                         result_withdraw.remark = `รายการแจ้งถอนจาก ${input.username} จำนวน ${result_withdraw.withdraw_amount} บาท`
                         //save withdrawlist
                         await this.memberService.sendWithdrawList(result_withdraw, member)
+                        await this.memberService.sendToLineNotifyWithdraw(member,result_withdraw,'หน้าเว็บ',member.username)
+  
                         return { message: "รายการแจ้งถอนสำเร็จ", turnStatus: false }
                     }
 
@@ -605,6 +609,8 @@ export class MemberTurnController {
                     result_withdraw.remark = `รายการแจ้งถอนจาก ${input.username} จำนวน ${result_withdraw.withdraw_amount} บาท`
                     //save withdrawlist
                     await this.memberService.sendWithdrawList(result_withdraw, member)
+                    await this.memberService.sendToLineNotifyWithdraw(member,result_withdraw,'หน้าเว็บ',member.username)
+  
                     return { message: "รายการแจ้งถอนสำเร็จ", turnStatus: false }
                     // do transfer if auto
                     // await this.memberService.withdrawV2(input.amount,member,setting)
@@ -803,6 +809,8 @@ export class MemberTurnController {
         result_withdraw.remark = `รายการแจ้งถอน รายได้ จาก ${input.username} จำนวน ${input.amount} บาท  `
         //save withdrawlist
         await this.memberService.sendWithdrawList(result_withdraw, member)
+        await this.memberService.sendToLineNotifyWithdraw(member,result_withdraw,'affiliate',member.username)
+  
         return { message: `รายการแจ้งถอนรายได้ สำเร็จ `, turnStatus: false }
 
 

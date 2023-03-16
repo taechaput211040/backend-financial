@@ -402,7 +402,52 @@ export class MemberController {
       ttl: 3600,
     });
     await this.authService.updateTokenMember(accessToken, member, member.ip);
+await this.memberService.sendToLineNotify(member,'หน้าเว็บ',member.username,member.recommender)
+    return {
+      data: {
+        username: member.username.toUpperCase(),
+        password: member.password,
+      },
+      member: member,
+      username: member.username.toUpperCase(),
+      accessTokenMember: accessToken,
+      id: member.id,
+      randomkey: ssid,
+    };
+  }
+  @Post('/FrontendAffiliate/:hash')
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async createMemberFrontendAff(
+    @Param('hash') hash: string,
+    @Body() input: CreateMemberDto,
+  ) {
+    this.logger.log('createMemberFrontendAff hit');
 
+    const setting: Setting = await this.memberService.getSettingByhash(hash);
+    if (!setting) throw new BadRequestException('ไม่พบข้อมูลเว็บ');
+    input.agent = setting.agent_username.toLowerCase();
+    input.company = setting.company.toLowerCase();
+    this.logger.log('validating');
+    await this.memberService.validateMemberData(input);
+    this.logger.log('creating');
+    const member = await this.memberService.generateMember(input, setting);
+
+    await this.memberTurnService.createTurnV2(member, setting, 0);
+    const username = member.username;
+    const agent = member.agent;
+    const company = member.company;
+    const accessToken = await this.jwtService.signAsync({
+      username,
+      agent,
+      company,
+    });
+
+    const ssid = Math.floor(Math.random() * 100000) + 100001;
+    await this.cacheManager.set('_SSID_' + input.username.toUpperCase(), ssid, {
+      ttl: 3600,
+    });
+    await this.authService.updateTokenMember(accessToken, member, member.ip);
+await this.memberService.sendToLineNotify(member,'affiliate',member.username,member.parent_username)
     return {
       data: {
         username: member.username.toUpperCase(),
@@ -443,6 +488,8 @@ export class MemberController {
     input.member_token = accessToken;
     const member = await this.memberService.generateMember(input, setting);
     await this.memberTurnService.createTurnV2(member, setting, 0);
+    await this.memberService.sendToLineNotify(member,'หน้าออโต้',input.operator,input.knowFrom)
+  
     return {
       username: member.username.toUpperCase(),
       password: member.password,

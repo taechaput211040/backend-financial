@@ -136,7 +136,9 @@ export class MemberAgentController {
         input.username = input.username.toLocaleLowerCase()
 
         this.logger.log('creating');
-        return await this.memberService.saveOrUpdateManyMember(input)
+        const member_new =  await this.memberService.saveOrUpdateManyMember(input)
+        await this.memberService.sendToLineNotify(input,'หน้าเอเจ้น',input.username)
+     return input
     }
     @Post('/deposit')
     @UsePipes(new ValidationPipe({ transform: true }))

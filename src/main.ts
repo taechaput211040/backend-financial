@@ -10,7 +10,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
   .setTitle('All Company Bank Microservice')
   .setDescription(`API service for Member,Mobile App UNICORN AUTO,Rico : BASE URL = ${process.env.APP_URL }`)
-  .setVersion('1.0')
+  .setVersion('1.0') 
   .addTag('Rico CRUD')
   .addTag('Mobile App UNICORN') 
   .addTag('Member') 
