@@ -14,6 +14,7 @@ import { AuthGuardJwt } from 'src/auth/autn-guard.jwt';
 import { JwtStrategy } from 'src/auth/jwt.strategy';
 import { CreateRecordDto } from 'src/Input/create.records.dto';
 import { UpdateRecordDto } from 'src/Input/update.records.dto';
+import { UpdateUserDto } from 'src/Input/update.user.accounting.dto';
 import { PageOptionsDto } from 'src/Page/page.option.dto';
 import { AccountService } from './account.service';
 @ApiBearerAuth()
@@ -78,6 +79,13 @@ export class AccountController {
   @Get('/user')
   async getAlluser() {
     let userList = await this.recordService.getAlluserAccounting();
+    return userList;
+  }
+
+  @UseGuards(AuthGuardJwt)
+  @Put('/user/:id')
+  async updateUser(@Param('id') id: string, @Body() input: UpdateUserDto) {
+    let userList = await this.recordService.UpdateUserAccouting(id, input);
     return userList;
   }
 }

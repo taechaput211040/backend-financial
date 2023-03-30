@@ -5,13 +5,16 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as dayjs from 'dayjs';
+import { AuthService } from 'src/auth/auth.service';
 import { monthly_report } from 'src/Entity/monthly.report.entity';
 import { Records } from 'src/Entity/records.entity';
 import { UserAccounting } from 'src/Entity/user.accounting.entity';
 import { UserToken } from 'src/Entity/user.token.entity';
 import { CreateRecordDto } from 'src/Input/create.records.dto';
 import { UpdateRecordDto } from 'src/Input/update.records.dto';
+import { UpdateUserDto } from 'src/Input/update.user.accounting.dto';
 import { PageMetaDto } from 'src/Page/page-meta.dto';
+import * as bcrypt from 'bcrypt';
 import { PageDto } from 'src/Page/page.dto';
 import { PageOptionsDto } from 'src/Page/page.option.dto';
 import { Between, Repository } from 'typeorm';
@@ -208,5 +211,28 @@ export class AccountService {
       };
     });
     return userList;
+  }
+  private getExistUser(id) {
+    return this.UserAccounting_Repository.findOne({
+      where: {
+        id: id,
+      },
+    });
+  }
+  public async UpdateUserAccouting(id: string, input: UpdateUserDto) {
+    const user = await this.getExistUser(id);
+    if (!user) {
+      throw new NotFoundException();
+    } else {
+      input.password = await this.hashPassword(input.password);
+      const resuser = await this.UserAccounting_Repository.save({
+        ...user,
+        ...input,
+      });
+      return resuser;
+    }
+  }
+  public async hashPassword(password: string): Promise<string> {
+    return await bcrypt.hash(password, 10);
   }
 }
