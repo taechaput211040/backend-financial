@@ -1,7 +1,8 @@
-import { ApiPropertyOptional } from "@nestjs/swagger";
-import { Type } from "class-transformer";
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
-import { Order } from "./oder.constants";
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Order } from './oder.constants';
+import * as dayjs from 'dayjs';
 
 export class PageOptionsDto {
   @ApiPropertyOptional({ enum: Order, default: Order.ASC })
@@ -28,7 +29,7 @@ export class PageOptionsDto {
   @IsString()
   @IsOptional()
   readonly options?: string;
- 
+
   @IsString()
   @IsOptional()
   readonly action?: string = 'ALL';
@@ -42,17 +43,19 @@ export class PageOptionsDto {
   @Min(1)
   @Max(50)
   @IsOptional()
-  readonly take?: number = 40;
+  readonly take?: number = 10;
 
   @IsString()
   @IsOptional()
-  readonly start?: string = new Date().toLocaleDateString('en-GB');
+  readonly start?: string = dayjs().startOf('day').toISOString();
 
-  
   @IsString()
   @IsOptional()
-  readonly end?: string = new Date().toLocaleDateString('en-GB');
+  readonly end?: string = dayjs().endOf('day').toISOString();
   get skip(): number {
     return (this.page - 1) * this.take;
   }
 }
+
+
+

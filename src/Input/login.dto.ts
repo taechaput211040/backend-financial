@@ -1,25 +1,28 @@
-import { IsOptional, IsString, Length } from "class-validator";
+import { IsOptional, IsString, Length } from 'class-validator';
 
-export class LoginDto{
+export class LoginDto {
+  // npm i --save class-validator class-transformer
 
+  @IsString()
+  @Length(1, 255)
+  username: string;
 
-   
-    // npm i --save class-validator class-transformer
- 
- 
-    
-    @IsString()
-    @Length(1,255)
-    username:string;
-    
-    @IsString()
-    @Length(1,255)
-    password:string;
-@IsOptional()
-    origin:string;
-    @IsOptional()
-    hash:string;
-    
-    
-   
-} 
+  @IsString()
+  @Length(1, 255)
+  password: string;
+  @IsOptional()
+  origin: string;
+  @IsOptional()
+  hash: string;
+}
+export class LoginAccountDto {
+  // npm i --save class-validator class-transformer
+
+  @IsString()
+  @Length(1, 255)
+  username: string;
+
+  @IsString()
+  @Length(1, 255)
+  password: string;
+}
