@@ -54,12 +54,16 @@ export class AccountService {
     console.log(recordMonthly, 'recordMonthly');
     //getmounth and save
     if (recordMonthly) {
+      if (resRecord.income_expense) {
+        recordMonthly.all_income += resRecord.amount;
+      } else {
+        recordMonthly.all_expense += resRecord.amount;
+      }
       recordMonthly.monthly_fee += resRecord.monthly_fee;
       recordMonthly.winlose += resRecord.winlose + resRecord.credit_purchase;
       recordMonthly.setup_auto += resRecord.setup_auto;
       recordMonthly.wage += resRecord.wage;
       recordMonthly.other += resRecord.feature + resRecord.regis_domain;
-
       recordMonthly.copyright += resRecord.copyright;
       recordMonthly.rental += resRecord.rental + resRecord.facility;
       recordMonthly.cloud += resRecord.cloud;
@@ -79,12 +83,16 @@ export class AccountService {
       let newRecordsMonthly = new monthly_report();
       newRecordsMonthly.year = yearOfRecord;
       newRecordsMonthly.month = monthOfRecord;
+      if (resRecord.income_expense) {
+        newRecordsMonthly.all_income = resRecord.amount;
+      } else {
+        newRecordsMonthly.all_expense = resRecord.amount;
+      }
       newRecordsMonthly.monthly_fee = resRecord.monthly_fee;
       newRecordsMonthly.winlose = resRecord.winlose + resRecord.credit_purchase;
       newRecordsMonthly.setup_auto = resRecord.setup_auto;
       newRecordsMonthly.wage = resRecord.wage;
       newRecordsMonthly.other = resRecord.feature + resRecord.regis_domain;
-
       newRecordsMonthly.copyright = resRecord.copyright;
       newRecordsMonthly.rental = resRecord.rental + resRecord.facility;
       newRecordsMonthly.cloud = resRecord.cloud;
