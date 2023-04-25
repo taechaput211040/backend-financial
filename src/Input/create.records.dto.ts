@@ -1,4 +1,10 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateRecordDto {
   @IsOptional()
@@ -124,11 +130,15 @@ export class CreateRecordDto {
 
   @IsString()
   @IsOptional()
-  opertaor: string;
+  operator: string;
 
   @IsBoolean()
   @IsOptional()
   loss_dept: boolean;
+
+  @IsNumber()
+  @IsOptional()
+  loss_dept_balance: number;
 
   @IsString()
   @IsOptional()

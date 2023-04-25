@@ -18,6 +18,7 @@ import * as bcrypt from 'bcrypt';
 import { PageDto } from 'src/Page/page.dto';
 import { PageOptionsDto } from 'src/Page/page.option.dto';
 import { Between, Repository } from 'typeorm';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AccountService {
@@ -30,9 +31,20 @@ export class AccountService {
     private readonly UserAccounting_Repository: Repository<UserAccounting>,
     @InjectRepository(UserToken, 'allaccounting')
     private readonly UserToken_repository: Repository<UserToken>,
+    private readonly JwtService: JwtService,
   ) {}
 
   public async createRecord(input: CreateRecordDto) {
+    if (input.income_expense == false) {
+      if (input.amount == input.actual_amount) {
+        input.status = true;
+      } else {
+        input.status = false;
+      }
+    } else {
+      input.status = true;
+    }
+
     let resRecord = await this.records_Repository.save(input);
     if (resRecord) {
       await this.saveRecordMonthly(resRecord);
@@ -114,10 +126,32 @@ export class AccountService {
     if (!records) {
       throw new NotFoundException();
     } else {
+      if (input.loss_dept) {
+        input.actual_amount = records.actual_amount + input.loss_dept_balance;
+        input.loss_dept_balance =
+          records.loss_dept_balance + input.loss_dept_balance;
+      }
+      if (input.amount == input.actual_amount) {
+        input.status = true;
+      }
       const resRecord = await this.records_Repository.save({
         ...records,
         ...input,
       });
+
+      if (resRecord.income_expense == false && resRecord.loss_dept == true) {
+        let monthOfRecord, yearOfRecord;
+        monthOfRecord = dayjs(resRecord.created_at).month();
+        yearOfRecord = dayjs(resRecord.created_at).year();
+        const recordMonthly = await this.monthlyreport_Repository.findOne({
+          where: { month: monthOfRecord, year: yearOfRecord },
+        });
+        recordMonthly.loss_dept += resRecord.loss_dept_balance;
+
+        await this.monthlyreport_Repository.save({
+          ...recordMonthly,
+        });
+      }
       return resRecord;
     }
   }
@@ -143,27 +177,41 @@ export class AccountService {
       .createQueryBuilder('t')
       .take(pageOptionsDto.take)
       .skip(((pageOptionsDto.page ?? 1) - 1) * (pageOptionsDto.take ?? 10))
-      .where('t.created_at  >= :startDate AND t.updated_at  <= :endDate', {
+      .where('t.created_at  >= :startDate AND t.created_at  <= :endDate', {
         startDate: pageOptionsDto.start,
         endDate: pageOptionsDto.end,
       });
-
-    if (pageOptionsDto.options && pageOptionsDto.keyword) {
-      res.andWhere(`t.${pageOptionsDto.options} like :keyword`, {
-        keyword: `${pageOptionsDto.keyword}%`,
+    if (pageOptionsDto.options == 'due_date') {
+      res.andWhere(' t.due_date  >= :due_date', {
+        due_date: dayjs().startOf('day'),
       });
+    } else if (pageOptionsDto.options && pageOptionsDto.keyword) {
+      if (pageOptionsDto.options == 'status' && pageOptionsDto.keyword) {
+        res.andWhere('t.status=:status', {
+          status: pageOptionsDto.keyword,
+        });
+      } else if (
+        pageOptionsDto.options == 'company' ||
+        pageOptionsDto.options == 'operator'
+      ) {
+        res.andWhere(`t.${pageOptionsDto.options} like :keyword`, {
+          keyword: `%${pageOptionsDto.keyword}%`,
+        });
+      }
     }
 
+    let count = await res.getCount();
+    console.log(count, 'res.');
     return await this.paginateOrder(
       res.orderBy('t.created_at', 'DESC').take(pageOptionsDto.take).getMany(),
       pageOptionsDto,
+      count,
     );
   }
 
-  private async paginateOrder(list, pageOptionsDto) {
+  private async paginateOrder(list, pageOptionsDto, itemCount) {
     const listData = await list;
-    const itemCount = listData.length;
-    console.log(itemCount);
+
     const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
     return await new PageDto(listData, pageMetaDto);
   }
@@ -220,6 +268,19 @@ export class AccountService {
     });
     return userList;
   }
+
+  public async getUserProfile(request) {
+    let token = request.headers.authorization;
+    token = token.replace('Bearer ', '');
+    const { username } = await this.JwtService.verifyAsync(token);
+    // console.log(profile,'profile')
+    const user = await this.UserAccounting_Repository.findOne({ username });
+    return {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+    };
+  }
   private getExistUser(id) {
     return this.UserAccounting_Repository.findOne({
       where: {
@@ -232,7 +293,9 @@ export class AccountService {
     if (!user) {
       throw new NotFoundException();
     } else {
-      input.password = await this.hashPassword(input.password);
+      if (input.password) {
+        input.password = await this.hashPassword(input.password);
+      }
       const resuser = await this.UserAccounting_Repository.save({
         ...user,
         ...input,

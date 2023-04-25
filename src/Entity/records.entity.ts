@@ -146,7 +146,7 @@ export class Records {
 
   @Column({ nullable: true })
   @Expose()
-  opertaor: string;
+  operator: string;
 
   @Column({ nullable: true, default: false  })
   @Expose()

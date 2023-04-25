@@ -7,6 +7,7 @@ import { UserToken } from 'src/Entity/user.token.entity';
 import { AccountController } from './account.controller';
 import { AccountService } from './account.service';
 import { SwaggerModule } from '@nestjs/swagger';
+import { JwtModule } from '@nestjs/jwt';
 @Module({
   controllers: [AccountController],
   providers: [AccountService],
@@ -17,6 +18,14 @@ import { SwaggerModule } from '@nestjs/swagger';
       'allaccounting',
     ),
     SwaggerModule,
+    JwtModule.registerAsync({
+      useFactory: () => ({
+        secret: process.env.AUTH_SECRET,
+        signOptions: {
+          expiresIn: '1h',
+        },
+      }),
+    }),
   ],
 })
 export class AccountModule {}

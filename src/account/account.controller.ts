@@ -6,6 +6,7 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -79,6 +80,13 @@ export class AccountController {
   @Get('/user')
   async getAlluser() {
     let userList = await this.recordService.getAlluserAccounting();
+    return userList;
+  }
+  @UseGuards(AuthGuardJwt)
+  @Get('/profile')
+  async getProfile(@Req() request) {
+    
+    let userList = await this.recordService.getUserProfile(request);
     return userList;
   }
 
