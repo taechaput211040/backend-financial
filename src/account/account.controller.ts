@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -77,6 +78,18 @@ export class AccountController {
   }
 
   @UseGuards(AuthGuardJwt)
+  @Get('/transaction/dept/:id')
+  async getTransactionList(@Param('id') id: string) {
+    return this.recordService.GetDeptLossTransactionList(id);
+  }
+
+  @UseGuards(AuthGuardJwt)
+  @Delete('/Record/:id')
+  async removeRecordsByid(@Param('id') id: string) {
+    return this.recordService.removeRecords(id);
+  }
+
+  @UseGuards(AuthGuardJwt)
   @Get('/user')
   async getAlluser() {
     let userList = await this.recordService.getAlluserAccounting();
@@ -85,7 +98,6 @@ export class AccountController {
   @UseGuards(AuthGuardJwt)
   @Get('/profile')
   async getProfile(@Req() request) {
-    
     let userList = await this.recordService.getUserProfile(request);
     return userList;
   }

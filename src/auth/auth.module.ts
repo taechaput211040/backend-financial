@@ -20,11 +20,12 @@ import { AccountService } from 'src/account/account.service';
 import { monthly_report } from 'src/Entity/monthly.report.entity';
 import { Records } from 'src/Entity/records.entity';
 import { UserToken } from 'src/Entity/user.token.entity';
+import { transaction_report } from 'src/Entity/transaction.account.entitiy';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Members]),
     TypeOrmModule.forFeature(
-      [Records, monthly_report, UserAccounting, UserToken],
+      [Records, monthly_report, UserAccounting, UserToken, transaction_report],
       'allaccounting',
     ),
     TypeOrmModule.forFeature([Website], 'support'),

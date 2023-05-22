@@ -18,6 +18,7 @@ import { monthly_report } from './Entity/monthly.report.entity';
 import { AccountModule } from './account/account.module';
 import { UserAccounting } from './Entity/user.accounting.entity';
 import { UserToken } from './Entity/user.token.entity';
+import { transaction_report } from './Entity/transaction.account.entitiy';
 @Module({
   imports: [
     CacheModule.register({
@@ -82,7 +83,7 @@ import { UserToken } from './Entity/user.token.entity';
         username: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME,
-        entities: [Records, monthly_report, UserAccounting, UserToken],
+        entities: [Records, monthly_report, UserAccounting, UserToken,transaction_report],
         synchronize: true,
         ssl: {
           rejectUnauthorized: false,

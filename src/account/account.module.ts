@@ -8,13 +8,14 @@ import { AccountController } from './account.controller';
 import { AccountService } from './account.service';
 import { SwaggerModule } from '@nestjs/swagger';
 import { JwtModule } from '@nestjs/jwt';
+import { transaction_report } from 'src/Entity/transaction.account.entitiy';
 @Module({
   controllers: [AccountController],
   providers: [AccountService],
 
   imports: [
     TypeOrmModule.forFeature(
-      [Records, monthly_report, UserAccounting, UserToken],
+      [Records, monthly_report, UserAccounting, UserToken, transaction_report],
       'allaccounting',
     ),
     SwaggerModule,
